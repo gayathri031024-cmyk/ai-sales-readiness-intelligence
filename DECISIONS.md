@@ -76,8 +76,26 @@ Record of significant architecture/product decisions. Append-only — do not sil
 
 ---
 
-### Decision: Competency thresholds normalized into `scenario_competency_thresholds`, not a jsonb column
-**Why:** The readiness engine (deterministic, per Phase 1) reads these directly — a real table is trivial to unit test and query, a jsonb blob is not.
-**Alternatives considered:** Store thresholds as jsonb on the `scenarios` row.
-**Tradeoff:** One more table, but the readiness engine's core logic becomes a straightforward SQL query + comparison instead of jsonb parsing.
-**Phase:** 2
+### Decision: Build the UX shell with typed mock data before any backend logic exists (Phase 4 precedes Phases 5–9)
+**Why:** Matches the phase roadmap's own ordering — validates the interaction design (3-screen journey, evidence-first result screen) independent of AI reliability work, and catches UX problems before they're expensive to fix in a wired-up system.
+**Alternatives considered:** Build screens phase-by-phase alongside each backend module (UI for scenarios in Phase 5, UI for conversation in Phase 7, etc.)
+**Tradeoff:** Mock data must later be swapped for real API calls — mitigated by writing `types.ts` first as the contract both mock data and future real responses conform to, so the swap is a data-source change, not a UI rewrite. All mock files are explicitly marked `MOCK` in a header comment per the code quality rule.
+**Phase:** 4
+
+### Decision: No routing library for the 3-screen MVP flow
+**Why:** Start → Conversation → Result is strictly linear with no need for deep-linking or back/forward at this stage. A local `useState` screen switcher in `App.tsx` is simpler and has zero new dependencies.
+**Alternatives considered:** react-router-dom.
+**Tradeoff:** No shareable URLs per screen yet; acceptable for an MVP demo flow, revisit if Phase 16 (Manager Intelligence) or multi-scenario browsing needs real routes.
+**Phase:** 4
+
+### Decision: Evidence Chip as the product's signature UI element
+**Why:** The core differentiation (per Phase 0) is "every score has evidence" — the design should make that promise visually unmistakable and consistent everywhere a score appears, not just state it in prose.
+**Alternatives considered:** A generic score gauge/progress-bar as the signature element (rejected — flagged in the frontend-design skill as a template default: "big number + small label + gradient accent").
+**Tradeoff:** None significant — the element is cheap to implement and reused as-is across every competency card.
+**Phase:** 4
+
+### Decision: "Briefing room / instrument panel" visual direction (dark, amber accent, Space Grotesk + Inter + JetBrains Mono)
+**Why:** Grounded in the actual subject — a tool for preparing for a high-stakes call, not a playful LMS. Deliberately avoided the three AI-tool-default looks named in the frontend-design skill (cream+terracotta serif, black+neon, broadsheet hairlines).
+**Alternatives considered:** Light theme with a single bright accent (rejected as closer to a generic SaaS dashboard default, less differentiated for this subject).
+**Tradeoff:** None significant at this stage; revisit only if user testing in a later phase suggests the tone reads as too severe for new reps.
+**Phase:** 4

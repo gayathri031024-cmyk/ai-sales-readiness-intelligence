@@ -26,3 +26,14 @@ Not yet applicable — Phase 3 is the first phase with code. Regression testing 
 ## Frontend
 
 No automated frontend tests yet (no real UI logic exists — Phase 3's App.tsx is a placeholder health check only). Test setup (Vitest + React Testing Library) to be added when Phase 4 introduces actual screens with logic worth testing.
+
+## Manual Verification (Phase 4)
+
+| Check | Result |
+|---|---|
+| `npm run build` (type-check + bundle) after all 3 screens added | ✅ 0 type errors |
+| Screens rendered and screenshotted via Playwright against the production build | ✅ Start Scenario, Conversation (initial + after exchange), Result all captured and visually reviewed |
+| Turn indexing consistency between mock conversation and mock evidence citations | ❌ found off-by-one on first pass → ✅ fixed and re-verified via screenshot |
+| Backend regression (`pytest -v`) still passes after frontend-only changes | ✅ 2 passed |
+
+Automated frontend tests (Vitest + RTL) still not yet added — first real candidates once Phase 5+ replaces mock data with real API calls and there's actual client-side logic (loading/error states, retries) worth unit testing.

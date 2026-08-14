@@ -34,4 +34,13 @@
 - Verified end-to-end: frontend dev server's `/api` proxy successfully reached the live backend process
 - Added CI (GitHub Actions) to run backend tests on push
 - Moved all project-memory docs into the repo root, added `PROJECT_PLAN.md`, `KNOWN_ISSUES.md`, `TEST_STATUS.md`, `AI_EVALUATION.md`
+- **Checkpoint: PASSED**
+
+## Phase 4 — Core UX
+- Built all 3 MVP screens: Start Scenario (briefing), Conversation (live roleplay), Result (evidence-based debrief)
+- Established a "briefing room / instrument panel" visual direction (dark theme, amber accent, Space Grotesk + Inter + JetBrains Mono) — deliberately avoided the generic AI-tool default looks
+- Built the Evidence Chip as the product's signature UI element, reused consistently across every competency card
+- Wired screens together with mock data (`src/mock/`, explicitly marked, typed against `types.ts` so Phases 5–9 swap in real data without a UI rewrite)
+- Found and fixed a turn-indexing off-by-one between the mock conversation and mock evidence citations before it could ship as a subtle inconsistency
+- Verified visually: built the production bundle, served it, and used Playwright to screenshot and inspect all 3 screens plus the interactive flow between them
 - **Checkpoint: pending review**
