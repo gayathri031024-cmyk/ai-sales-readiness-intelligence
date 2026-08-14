@@ -16,8 +16,8 @@ Full roadmap and status. See `PROJECT_STATE.md` for the live "what's next" snaps
 | 1 | System Architecture | ✅ Done | PASSED |
 | 2 | Data Model | ✅ Done | PASSED |
 | 3 | Project Foundation | ✅ Done | PASSED |
-| 4 | Core UX | 🔄 In Progress | pending review |
-| 5 | Scenario Engine | Not started | — |
+| 4 | Core UX | ✅ Done | PASSED |
+| 5 | Scenario Engine | 🔄 In Progress | pending review |
 | 6 | Adaptive AI Buyer | Not started | — |
 | 7 | Conversation Engine | Not started | — |
 | 8 | Evaluation Engine | Not started | — |
@@ -50,4 +50,6 @@ Full roadmap and status. See `PROJECT_STATE.md` for the live "what's next" snaps
 
 **Phase 3:** Repo scaffolded; backend boots and serves real HTTP traffic; `/health` confirms DB connectivity; migrations apply cleanly and produce the exact Phase 2 schema; tests pass; frontend builds, type-checks, and its dev server successfully proxies to the live backend; CI workflow runs backend tests on push. Repo committed in 10 small units, tagged `v0.3-foundation`, packaged as a portable zip including git history. **Verification is done. Awaiting checkpoint sign-off.**
 
-**Phase 4 (current):** All 3 MVP screens built as real components (not static mockups); deliberate visual direction grounded in the product's subject, not a generic AI-tool default; one consistent signature element (Evidence Chip) tying every score to a cited transcript line; typed contract so mock data is swappable for real data without a UI rewrite; verified with actual rendered screenshots, not just a successful build.
+**Phase 4:** All 3 MVP screens built as real components (not static mockups); deliberate visual direction grounded in the product's subject, not a generic AI-tool default; one consistent signature element (Evidence Chip) tying every score to a cited transcript line; typed contract so mock data is swappable for real data without a UI rewrite; verified with actual rendered screenshots, not just a successful build. **PASSED.**
+
+**Phase 5 (current):** The single MVP scenario (persona, product context, objection, difficulty, thresholds) is real, seeded, and idempotent — not hardcoded in frontend mock files; `GET /scenarios` and `GET /scenarios/{id}` exist with a schema layer independent of the ORM models; buyer hidden state (`base_state`) is confirmed, by test, to never appear in any scenario response; `StartScenario` renders real backend data via a typed adapter layer. **Not yet independently visually verified end-to-end** — see `KNOWN_ISSUES.md` P2.

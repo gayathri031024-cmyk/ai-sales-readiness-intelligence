@@ -43,4 +43,13 @@
 - Wired screens together with mock data (`src/mock/`, explicitly marked, typed against `types.ts` so Phases 5–9 swap in real data without a UI rewrite)
 - Found and fixed a turn-indexing off-by-one between the mock conversation and mock evidence citations before it could ship as a subtle inconsistency
 - Verified visually: built the production bundle, served it, and used Playwright to screenshot and inspect all 3 screens plus the interactive flow between them
-- **Checkpoint: pending review**
+- **Checkpoint: PASSED**
+
+## Phase 5 — Scenario Engine
+- Seeded the single MVP scenario (Enterprise CFO — Price Objection) into the DB: 1 buyer persona, 1 scenario, 3 competencies (Discovery, Objection Handling, Closing), and their scenario-specific thresholds (60 / 70 / 65) — values and rationale recorded in `DECISIONS.md`, not just a bare migration
+- Seed is idempotent (`seed_mvp_scenario`), safe to run on every dev startup; verified with a dedicated unit test and by exercising two full app lifespans against the same SQLite file
+- Added `GET /scenarios` and `GET /scenarios/{id}` — thin router in `api/routes/scenario.py`, business logic in `scenario/service.py`, response shape defined by Pydantic schemas in `scenario/schemas.py` (separate from the ORM models, so a DB column change can't silently change the API contract)
+- 5 new backend tests: list/detail happy paths, 404 for unknown id, a regression guard that `buyer_persona.base_state` never leaks into any scenario response, and seed idempotency
+- Frontend: `StartScenario` now fetches the real scenario via `src/api/scenario.ts` (adapts backend snake_case to the frontend's camelCase `Scenario` type) instead of `src/mock/scenario.ts`, which has been deleted. `Conversation` and `Result` still run on mock data — Phases 6–9 replace those next
+- Added a loading state and an explicit error state to `App.tsx` for the scenario fetch, rather than letting a failed fetch render a blank/broken screen
+- **Checkpoint: awaiting CHECKPOINT PASSED**

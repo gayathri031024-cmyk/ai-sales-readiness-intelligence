@@ -99,3 +99,21 @@ Record of significant architecture/product decisions. Append-only — do not sil
 **Alternatives considered:** Light theme with a single bright accent (rejected as closer to a generic SaaS dashboard default, less differentiated for this subject).
 **Tradeoff:** None significant at this stage; revisit only if user testing in a later phase suggests the tone reads as too severe for new reps.
 **Phase:** 4
+
+### Decision: MVP scenario data seeded via a dev-lifespan Python function, not a proper data migration
+**Why:** There is exactly one hardcoded scenario for the entire MVP (per the Phase 0 Scope Gate — no scenario-authoring API exists or is planned before Milestone 3). A full Alembic data migration for a single row that only ever needs to exist in dev/demo is more infrastructure than the problem justifies right now.
+**Alternatives considered:** An Alembic data migration alongside the schema migration; a `seed.py` CLI script run manually.
+**Tradeoff:** This is explicitly *not* how production seeding should work once real scenario authoring exists — tracked as a known issue owned by Phase 21, same bucket as the existing dev-mode `Base.metadata.create_all` guard it rides alongside. `seed_mvp_scenario()` is idempotent and isolated in `scenario/service.py`, so replacing the mechanism later doesn't require touching its logic — a real Phase 21 migration can call the same function.
+**Phase:** 5
+
+### Decision: Scenario-specific competency thresholds (60 / 70 / 65) set deliberately uneven, with Objection Handling highest
+**Why:** This scenario's whole premise (per Phase 0) is a price objection. A threshold set where every competency requires the same bar wouldn't test anything about the readiness engine's ability to fail a rep on the *specific* skill the scenario is designed to probe. Objection Handling at 70 (vs. 60/65 for the others) means a mediocre-but-not-terrible transcript should plausibly land on NOT_READY or AT_RISK because of the named challenge, not an arbitrary uniform cutoff.
+**Alternatives considered:** Uniform threshold (e.g. 70 across all three) — rejected as less demonstrative of "scenario-specific readiness," which Phase 0/9 call out as a core differentiator over a single global score.
+**Tradeoff:** These are placeholder judgment calls, not calibrated against real transcripts yet — Phase 15 (Stress Testing) is the actual point where these get validated against a range of good/bad conversations and adjusted if they produce a nonsensical READY/NOT_READY/AT_RISK spread.
+**Phase:** 5
+
+### Decision: `ScenarioDetailOut` includes `thresholds`, even though the frontend's `Scenario` type doesn't consume that field yet
+**Why:** The readiness engine (Phase 9) and the Result screen need exactly this query (scenario → thresholds → competency). Since `get_scenario` already joins it, exposing it now avoids a second endpoint later. TypeScript's structural typing means the frontend safely ignores the extra field until Phase 9 adds it to `types.ts`.
+**Alternatives considered:** A separate `GET /scenarios/{id}/thresholds` endpoint added in Phase 9 instead.
+**Tradeoff:** Minor: the API response is very slightly larger than the current frontend needs. Judged acceptable — this is returning already-fetched data, not adding a new query or new coupling.
+**Phase:** 5
