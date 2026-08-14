@@ -48,4 +48,4 @@ Full roadmap and status. See `PROJECT_STATE.md` for the live "what's next" snaps
 
 **Phase 2:** MVP-scoped schema for every module; readiness thresholds normalized and queryable; evidence traceable to a real transcript line; no non-MVP tables introduced.
 
-**Phase 3 (current):** Repo scaffolded; backend boots and serves real HTTP traffic; `/health` confirms DB connectivity; migrations apply cleanly and produce the exact Phase 2 schema; tests pass; frontend builds, type-checks, and its dev server successfully proxies to the live backend; CI workflow runs backend tests on push.
+**Phase 3 (current):** Repo scaffolded; backend boots and serves real HTTP traffic; `/health` confirms DB connectivity; migrations apply cleanly and produce the exact Phase 2 schema; tests pass; frontend builds, type-checks, and its dev server successfully proxies to the live backend; CI workflow runs backend tests on push. Repo committed in 10 small units, tagged `v0.3-foundation`, packaged as a portable zip including git history. **Verification is done. Awaiting checkpoint sign-off.**
