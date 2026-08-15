@@ -36,3 +36,11 @@ For the buyer specifically, this phase validated:
 ## Next (deferred past Phase 6, by design)
 
 Real-model evaluation against `AnthropicProvider` — same test scenarios above, run against the actual Anthropic API once a key is added at final integration, per this phase's explicit "do not require a real API key" instruction.
+
+## Phase 7 addendum
+
+Phase 7 added no new AI-touching code — it orchestrates the unchanged Phase 6 `run_buyer_turn()` across multiple persisted turns. Everything in the Methodology/Test Scenarios/Known AI Failures sections above still applies unchanged to each individual turn inside a multi-turn conversation.
+
+One new thing worth naming here even though it isn't strictly "AI evaluation": the **multi-turn persistence tests** in `test_conversation.py` (`test_turn_two_uses_turn_ones_persisted_state_not_the_initial_state`, `test_buyer_state_history_rows_are_cumulative_across_turns`) are the first automated evidence that a sequence of classified behaviors actually compounds correctly across turns — trust/patience/budget_sensitivity/interest at turn N reflect every prior turn's deltas, not just the most recent one. This was previously untestable (Phase 6 only ever ran one turn in isolation) and directly supports Phase 0 Assumption #1 ("the LLM can maintain hidden buyer state across a conversation") — specifically the *state persistence* half of that assumption, as opposed to the *no-leakage* half Phase 6 already covered.
+
+Still not validated against a real model (see caveat at the top of this file, unchanged): whether a real Claude model's classifications, chained across many turns of a real conversation, produce a buyer arc that reads as coherent and believable to a human rep — as opposed to just "the arithmetic is correct," which is what's actually tested here.

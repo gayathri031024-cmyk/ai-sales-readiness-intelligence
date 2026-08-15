@@ -147,3 +147,33 @@ Record of significant architecture/product decisions. Append-only — do not sil
 **Alternatives considered:** `unittest.mock.Mock()` / `pytest-mock` patches on an Anthropic client.
 **Tradeoff:** Slightly more code (a real class with call recording, queued responses, failure simulation) than an ad hoc mock — but it's reusable across every test file, self-documents expected provider behavior, and the same abstraction is exactly what makes a real key swap-in-only later, per the phase requirement.
 **Phase:** 6
+
+### Decision: The rep always speaks first — no scripted opening buyer line
+**Why:** Phase 6's buyer engine (`run_buyer_turn`) always classifies a rep message before generating a reply; there is no ungated "just say something" path. Inventing one solely to produce a scripted conversation-opener would be exactly the kind of Phase 6 redesign this phase's PHASE BOUNDARY section rules out. The Phase 4 mock UI showed the buyer speaking first (a canned opening line), but that was placeholder UX built before the real buyer engine existed.
+**Alternatives considered:** Add a separate "opening line" code path that calls response generation directly, skipping classification and state update, seeded from `scenario.known_objection`.
+**Tradeoff:** The live experience now opens on a blank transcript with a one-line UI hint ("the conversation starts with you") rather than the buyer immediately posing an objection. This is a legitimate product UX question for review, not a technical limitation — worth revisiting explicitly if the reviewed experience feels wrong, but not invented unilaterally here.
+**Phase:** 7
+
+### Decision: `conversations.status` stays exactly `in_progress` / `completed` (no third `failed` status)
+**Why:** `DATA_MODEL.md` already establishes exactly these two status values. The Phase 7 spec's own sketch ("active" / "completed" / "failed") is looser language, not a hard requirement, and explicitly defers to "whatever status terminology the project already establishes." Introducing a third status would be an unrequested schema/vocabulary change.
+**Alternatives considered:** Add `status = "failed"` for the patience-exhausted case, mirroring the "failed" wording used loosely in the Phase 7 prompt text.
+**Tradeoff:** A patience-exhausted conversation and a turn-limit conversation are both `status: completed`, distinguished only by `end_reason`. This is arguably clearer, not a compromise — `end_reason` already exists in the data model specifically to carry that distinction (`turn_limit` / `patience_exhausted` / `explicit_close`), so a second status axis would be redundant.
+**Phase:** 7
+
+### Decision: Patience-exhausted end condition triggers at the state model's own clamp floor (`patience <= 0`), not a new arbitrary threshold
+**Why:** `BuyerState` already defines `[0, 100]` as the bounded range for every dimension (Phase 6). Using the schema's own floor as the "buyer has walked away" signal ties this end condition to an existing, tested boundary rather than inventing a second number (e.g. "patience <= 15") that would need its own justification and calibration.
+**Alternatives considered:** A configurable per-scenario patience threshold (e.g. a new `scenarios.patience_floor` column).
+**Tradeoff:** Every scenario currently shares the same implicit floor (0) regardless of persona sophistication. Acceptable for the single MVP scenario; a future scenario-authoring phase (per DATA_MODEL.md's deferred-entities list) is the natural place to make this configurable if a second scenario ever needs a different bar.
+**Phase:** 7
+
+### Decision: Default single-user via an idempotent `get_or_create_default_user`, not a new auth system
+**Why:** `conversations.user_id` is a required FK (Phase 2 decision, made specifically so multi-user support later doesn't require a migration). ARCHITECTURE.md §8 explicitly defers multi-user auth to Milestone 3. Rather than leaving `user_id` unset or building any auth, `conversation/service.py` reuses the exact idempotent-lookup-or-create pattern `scenario.service.seed_mvp_scenario` already established.
+**Alternatives considered:** A minimal auth stub (API key header, single hardcoded user id passed by the frontend).
+**Tradeoff:** Every conversation in this MVP sandbox is attributed to the same synthetic user regardless of who is actually typing — acceptable since there is no multi-user requirement yet, and the schema doesn't need to change when real auth is eventually added.
+**Phase:** 7
+
+### Decision: Turn submission response returns the full `ConversationOut` (messages included), not a narrower "just the buyer's reply" shape
+**Why:** ARCHITECTURE.md §6 already commits to "frontend always re-fetches rather than trusting local history, so a refresh never desyncs from the server record." Returning the full conversation state from every mutating endpoint (`start`, `send turn`, `close`) means the frontend has exactly one shape to render everywhere and never has to reconcile a partial turn response against previously-fetched state.
+**Alternatives considered:** A narrow `{buyer_reply: str}` response, requiring a separate `GET` to refresh full state after every turn.
+**Tradeoff:** Slightly larger response payloads (the full transcript on every turn) in exchange for a strictly simpler frontend state model and one less network round-trip per turn.
+**Phase:** 7

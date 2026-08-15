@@ -90,3 +90,31 @@ Run with: `cd backend && python -m pytest -v` — **67 passed** (verified fresh,
 |---|---|
 | Phase 5 backend tests (`test_scenario.py`, `test_health.py` — 7 tests) | ✅ still pass, unchanged, now part of the 67 |
 | Frontend build | ✅ still builds clean — Phase 6 made no frontend changes |
+
+## Backend (Phase 7 additions)
+
+| Test file | Covers | Status | Phase |
+|---|---|---|---|
+| `test_conversation.py` (27 tests) | Conversation creation (valid/invalid scenario, initial state matches persona `base_state`, starts `in_progress`); retrieval (public shape, 404 for unknown id, hidden state absent from JSON); turn submission (message/reply persisted, turn count increments, hidden state updated in DB, 404 for unknown conversation); **multi-turn persistence** (turn 2 provably builds on turn 1's persisted state rather than resetting to the initial state — asserted against exact expected deltas from `buyer/rules.py`, and against `buyer_state_history` rows directly); message history ordering with no duplication; terminal conditions (turn-limit completion, patience-exhausted completion, explicit close, idempotent re-close, terminal conversation rejects further turns with 409 and does not mutate state or append messages); hidden-state protection (no `trust`/`patience`/`budget_sensitivity`/`interest`/`current_buyer_state`/`classified_intent` in any response, no system-prompt/rationale/classification leakage); failure behavior (graceful degradation with no `LLM_API_KEY` set still returns a valid conversation and non-empty fallback reply, invalid conversation id returns 404 not 500, completed conversation returns 409 not 500, empty message returns 422) | PASS | 7 |
+
+Run with: `cd backend && python -m pytest -v` — **94 passed** (67 Phase 0–6 + 27 Phase 7, verified fresh with `dev.db` removed and all LLM-related env vars unset — zero network calls, zero API cost).
+
+## Manual Verification (Phase 7)
+
+| Check | Result |
+|---|---|
+| Full suite passes with zero LLM-related env vars set | ✅ 94 passed |
+| `alembic upgrade head` against a fresh SQLite DB | ✅ all 11 tables created (schema already covered `conversations`/`messages`/`buyer_state_history` since Phase 2/3 — no new migration was needed for Phase 7) |
+| Fresh-DB migration followed by `seed_mvp_scenario()` twice | ✅ 1 scenario row, unaffected by the (absent) schema change |
+| Backend boots via `uvicorn` and serves real HTTP traffic (not just `TestClient`) | ✅ `curl /health` → `status: ok`; `curl -X POST /conversations` → real conversation created with correct initial public shape and no hidden-state fields |
+| Live turn submission against a real running server, no `LLM_API_KEY` set | ✅ `curl -X POST /conversations/{id}/turns` → graceful-degradation fallback reply returned, both messages persisted, `turn_count` incremented correctly |
+| Live 404 handling against a real running server | ✅ `curl /conversations/does-not-exist` → `{"detail": "Conversation not found"}` |
+| `npm run build` (frontend, type-check + bundle) after wiring the real conversation API into the Conversation screen | ✅ 0 type errors |
+| Frontend dev server rendering a live multi-turn conversation, screenshotted | ❌ **not completed** — same environment limitation as Phase 5's open item: background `uvicorn`/`vite dev` processes were reclaimed by this sandbox between tool calls before a screenshot could be captured. The backend contract is covered by 27 automated tests plus the live-server `curl` checks above, and the frontend's adapter/screen code type-checks against that exact contract. **You should do one manual local pass** (`uvicorn` in one terminal, `npm run dev` in another) to visually confirm Start → Conversation → sending a message → seeing a buyer reply, before marking this checkpoint PASSED. |
+
+## Regression Suite (Phase 7)
+
+| Check | Result |
+|---|---|
+| All Phase 0–6 backend tests (67) | ✅ still pass, unchanged, now part of the 94 |
+| Frontend build | ✅ still builds clean — `types.ts` additions are additive; `Conversation.tsx` and `mock/buyer.ts` were the only files changed/removed, both explicitly in Phase 7's scope (mock buyer replacement) |
