@@ -59,3 +59,34 @@ Automated frontend tests (Vitest + RTL) still not yet added — first real candi
 |---|---|
 | Phase 3 backend tests (`test_health.py`) | ✅ still pass, unaffected |
 | Phase 4 frontend build | ✅ still builds clean after mock removal + real fetch wiring |
+
+## Backend (Phase 6 additions)
+
+| Test file | Covers | Status | Phase |
+|---|---|---|---|
+| `test_buyer_state.py` (7 tests) | State bounds, clamping (above/below/at edges), pure `apply_deltas`, exactly 4 documented dimensions (no scope creep) | PASS | 6 |
+| `test_buyer_rules.py` (10 tests) | Every `RepBehavior` label has a rule, determinism, directionally sensible deltas, injection penalty, boundary clamping under repeated updates | PASS | 6 |
+| `test_llm_provider.py` (12 tests) | `MockLLMProvider` queued/default/call-recording behavior, `AnthropicProvider` fails without a key without ever calling the network, structured-output parse/validate/retry-once/second-failure/JSON-extraction-from-prose | PASS | 6 |
+| `test_buyer_classification.py` (7 tests) | Valid classification, degrade-to-UNCLEAR on unavailability and on repeated malformed output, retry-then-recover, out-of-range value rejected, rep message delimited, full label coverage | PASS | 6 |
+| `test_buyer_response.py` (9 tests) | Healthy reply passthrough, fallback on unavailability/empty response, leak scrubber catches numeric/AI-disclosure/system-prompt leaks, explicit false-positive guard for ordinary business language, message delimiting, no raw numeric state in the system prompt | PASS | 6 |
+| `test_buyer_prompt_injection.py` (5 tests) | End-to-end via `run_buyer_turn`: injection messages classified correctly and penalize trust/patience, scrubber catches a hypothetical future model leak of state or system prompt, in-character behavior when the model behaves correctly, no state object leaking into reply text | PASS | 6 |
+| `test_buyer_graph.py` (7 tests) | Graph compiles, singleton caching, full happy-path turn, state purity (original object unmutated), full degradation with no crash, turn_index wiring, node ordering (reply reflects post-update state, not pre-update) | PASS | 6 |
+| `test_buyer_state_exposure.py` (3 tests) | Hidden-state regression guard on the buyer-turn output specifically (complements the Phase 5 scenario-API guard): no field name, no exact seeded numeric value, structural type-level separation between reply and state | PASS | 6 |
+
+Run with: `cd backend && python -m pytest -v` — **67 passed** (verified fresh, `dev.db` removed, `LLM_API_KEY`/`LLM_MODEL`/`ANTHROPIC_API_KEY` all unset — zero network calls, zero API cost).
+
+## Manual Verification (Phase 6)
+
+| Check | Result |
+|---|---|
+| Full suite passes with zero LLM-related env vars set | ✅ 67 passed |
+| `npm run build` (frontend, untouched by this phase — regression check only) | ✅ 0 type errors |
+| No `.env` tracked in git; no API key present in any tracked file | ✅ confirmed via `git ls-files` and manual review |
+| `AnthropicProvider` against a real API key | ❌ **not done, by design** — no key provided this phase per your explicit instruction; tracked as P3 in `KNOWN_ISSUES.md`, owner: final integration |
+
+## Regression Suite (Phase 6)
+
+| Check | Result |
+|---|---|
+| Phase 5 backend tests (`test_scenario.py`, `test_health.py` — 7 tests) | ✅ still pass, unchanged, now part of the 67 |
+| Frontend build | ✅ still builds clean — Phase 6 made no frontend changes |

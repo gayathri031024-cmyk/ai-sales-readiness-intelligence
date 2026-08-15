@@ -117,3 +117,33 @@ Record of significant architecture/product decisions. Append-only — do not sil
 **Alternatives considered:** A separate `GET /scenarios/{id}/thresholds` endpoint added in Phase 9 instead.
 **Tradeoff:** Minor: the API response is very slightly larger than the current frontend needs. Judged acceptable — this is returning already-fetched data, not adding a new query or new coupling.
 **Phase:** 5
+
+### Decision: Numeric buyer state never enters the reply-generation prompt at all
+**Why:** "Never reveal numeric hidden state" is far more reliable as a structural guarantee than a prompt instruction alone. `persona.py` translates each state dimension into a qualitative hint (e.g. trust 20 -> "You are wary and skeptical...") before building the system prompt — the actual integers 0-100 are simply absent from anything the model receives for reply generation. An explicit instruction not to reveal numbers is also present (defense in depth), but the primary control is that there is nothing numeric to leak in the first place.
+**Alternatives considered:** Pass the raw numeric state and rely entirely on system-prompt instructions ("never reveal these numbers") to withhold it.
+**Tradeoff:** Slightly less nuanced buyer behavior (three qualitative buckets per dimension instead of a continuous scale informing tone) in exchange for a leak surface that doesn't depend on the model faithfully following an instruction under adversarial pressure.
+**Phase:** 6
+
+### Decision: Independent regex-based leak scrubber as defense-in-depth, separate from the prompt-level controls
+**Why:** `MASTER_PROMPT.md`'s AI RELIABILITY section explicitly calls out hallucination as a risk to account for, not just prompt-injection. Even with numeric state kept out of the prompt (see above), a future real model could still hallucinate a specific number, self-disclose as an AI, or reference "my system prompt" unprompted. `response.py::_looks_like_leak` is a second, independent layer that pattern-matches on that class of output and substitutes a safe in-character fallback line rather than shipping it. Deliberately narrow patterns (e.g. `trust score: 45`, not just the word "trust") to avoid false-positiving on ordinary buyer dialogue that happens to use words like "trust" or "patience" in a normal business sense — covered by a dedicated test.
+**Alternatives considered:** Rely solely on the system prompt's instructions; add a second LLM call to judge whether a reply leaked anything (rejected as unnecessary cost/latency for what a cheap regex layer already catches for the known leak shapes).
+**Tradeoff:** A regex layer can't catch every conceivable phrasing of a leak, and could in principle scrub a legitimate reply that happens to match a pattern — mitigated by keeping patterns narrow and testing the false-positive case explicitly. This is explicitly a second layer, not the primary control.
+**Phase:** 6
+
+### Decision: State-transition rule table is flat (one delta per classified label), not conditioned on current state
+**Why:** Reaffirms the Phase 1 decision that buyer state updates are deterministic given LLM-classified behavior, not raw LLM-generated numbers. Conditioning deltas on current state too (e.g. "a close attempt lands differently depending on current trust") would reintroduce exactly the kind of harder-to-test, harder-to-reason-about complexity that decision was meant to avoid, for an MVP whose job is proving the loop works, not modeling nuanced buyer psychology.
+**Alternatives considered:** State-conditional delta tables; letting the LLM propose a delta magnitude within a bounded range.
+**Tradeoff:** Less "emergent" buyer behavior — every occurrence of the same classified behavior produces the same delta regardless of conversation history. Explicitly acceptable for Phase 6 per this phase's own prompt ("Do NOT invent a larger buyer-state system unless the existing project specification requires it"); revisit only with a demonstrated product reason, not by accretion.
+**Phase:** 6
+
+### Decision: LangGraph turn graph covers exactly one turn; looping/end-conditions are Phase 7's job
+**Why:** `ARCHITECTURE.md` §4A sketches `check_end_conditions` (turn limit / patience threshold / explicit close) as part of the eventual conversation loop, but this Phase 6 prompt's PHASE BOUNDARY section explicitly rules out building Phase 7 features. `buyer/graph.py` therefore implements classify -> update_state -> generate_reply as a single straight-line graph with no loop-back edge; a future Phase 7 graph or plain Python loop calls `run_buyer_turn()` repeatedly and owns the termination decision.
+**Alternatives considered:** Build the full multi-turn looping graph now, since the shape is already sketched in `ARCHITECTURE.md`.
+**Tradeoff:** `buyer/graph.py` will need a Phase 7 caller before it's part of an actual playable conversation — but the turn logic itself is fully complete, tested, and callable in isolation now, which is what this phase's own PHASE BOUNDARY section calls for.
+**Phase:** 6
+
+### Decision: `MockLLMProvider` is a first-class, permanent part of the codebase, not a test-only throwaway
+**Why:** The Phase 6 prompt requires zero API cost/key during development and a test suite that never depends on a real API. Rather than monkeypatching or mocking at the test-framework level, `MockLLMProvider` is a real implementation of the same `LLMProvider` protocol `AnthropicProvider` implements — so `buyer/service.py` and every node in the graph are provider-agnostic by construction, not just "happen to work with a mock because we patched something."
+**Alternatives considered:** `unittest.mock.Mock()` / `pytest-mock` patches on an Anthropic client.
+**Tradeoff:** Slightly more code (a real class with call recording, queued responses, failure simulation) than an ad hoc mock — but it's reusable across every test file, self-documents expected provider behavior, and the same abstraction is exactly what makes a real key swap-in-only later, per the phase requirement.
+**Phase:** 6

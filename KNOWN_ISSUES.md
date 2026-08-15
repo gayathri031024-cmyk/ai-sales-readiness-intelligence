@@ -6,8 +6,16 @@ Remove an issue only after it's actually fixed and verified — don't just delet
 ## Open
 
 **P2 — Conversation end-condition thresholds undefined**
-Turn limit / patience threshold / explicit-close logic is referenced in the architecture but no concrete values exist yet.
-Origin: Phase 1. Owner: Phase 5/6.
+Turn limit / patience threshold / explicit-close logic is referenced in the architecture but no concrete values exist yet. Phase 6 built the single-turn buyer graph only (classify → update state → reply); looping and end-condition logic remains Phase 7's job per `buyer/graph.py`'s module docstring.
+Origin: Phase 1. Owner: Phase 7.
+
+**P2 — Buyer module has no persistence or API route yet**
+`buyer/service.run_buyer_turn()` is fully built and tested but is not wired to the database (`current_buyer_state` / `buyer_state_history` columns) or to any FastAPI route. This is intentional per the Phase 6 prompt's PHASE BOUNDARY section — `conversation/` (Phase 7) owns persistence and turn-taking; `buyer/` owns the turn logic it calls.
+Origin: Phase 6. Owner: Phase 7.
+
+**P3 — `AnthropicProvider` untested against the real Anthropic API**
+`AnthropicProvider` is implemented and structurally correct (lazy client construction, `LLMUnavailableError` on missing key, response parsing) but has never been exercised against a live API — no key has been provided per the project's explicit instruction not to require one during Phase 6. Needs one live smoke test once a real `LLM_API_KEY` is added at final integration.
+Origin: Phase 6. Owner: final integration (post-Phase 6, per your instruction).
 
 **P3 — `buyer_state_history` grows unbounded per conversation**
 Fine at prototype scale; needs a retention/pruning policy before real deployment.
