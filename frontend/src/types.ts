@@ -29,6 +29,23 @@ export interface TranscriptMessage {
   content: string;
 }
 
+// Phase 7 (Conversation Engine): the real conversation record from the
+// backend. Deliberately has no hidden-state fields (trust/patience/
+// budget_sensitivity/interest) — the backend never sends them, per
+// ARCHITECTURE.md §6, so there is nothing to strip here.
+export type ConversationStatus = "in_progress" | "completed";
+export type ConversationEndReason = "turn_limit" | "patience_exhausted" | "explicit_close" | null;
+
+export interface Conversation {
+  id: string;
+  scenarioId: string;
+  status: ConversationStatus;
+  endReason: ConversationEndReason;
+  turnCount: number;
+  maxTurns: number;
+  messages: TranscriptMessage[];
+}
+
 export type CompetencyKey = "discovery" | "objection_handling" | "closing";
 
 export interface Evidence {

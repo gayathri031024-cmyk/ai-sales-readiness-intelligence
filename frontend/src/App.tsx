@@ -9,13 +9,15 @@ import { Result } from "./screens/Result";
 type Screen = "start" | "conversation" | "result";
 
 /**
- * Phase 5 (Scenario Engine): scenario data is now real, fetched from the
- * backend (see src/api/scenario.ts) instead of src/mock/scenario.ts, which
- * has been removed. Conversation and Result still consume mock data —
- * that becomes real in Phases 6–9 (Adaptive Buyer, Conversation Engine,
- * Evaluation Engine, Readiness Engine) respectively. The point of Phase 4's
- * typed contract was exactly this: swapping one screen's data source at a
- * time without touching the screen components themselves.
+ * Phase 5 (Scenario Engine): scenario data is real, fetched from the
+ * backend (see src/api/scenario.ts). Phase 7 (Conversation Engine): the
+ * Conversation screen now drives a real multi-turn conversation via
+ * src/api/conversation.ts instead of mock canned replies — see
+ * screens/Conversation.tsx. Result still consumes mock data; that
+ * becomes real in Phases 8–9 (Evaluation Engine, Readiness Engine). The
+ * point of Phase 4's typed contract was exactly this: swapping one
+ * screen's data source at a time without touching the screen components
+ * themselves — App.tsx's interface with <Conversation /> is unchanged.
  */
 function App() {
   const [screen, setScreen] = useState<Screen>("start");

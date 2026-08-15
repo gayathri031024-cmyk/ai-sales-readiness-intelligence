@@ -2,7 +2,10 @@
 // the Result screen's UI (evidence citations, per-competency thresholds,
 // a NOT_READY verdict). Replaced by the real evidence-extraction pipeline
 // (Phase 8) and deterministic readiness engine (Phase 9). The turnIndex
-// values here correspond to messages in mock/buyer.ts's canned exchange.
+// values here are illustrative only — they no longer correspond to any
+// live mock conversation, since Phase 7 replaced the Conversation
+// screen's canned exchange (formerly mock/buyer.ts) with the real
+// multi-turn conversation API.
 
 import type { ReadinessResult } from "../types";
 
