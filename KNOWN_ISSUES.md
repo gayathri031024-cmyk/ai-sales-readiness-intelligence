@@ -5,6 +5,10 @@ Remove an issue only after it's actually fixed and verified — don't just delet
 
 ## Open
 
+**P2 — `Result` screen still renders Phase 4 mock data; not wired to real Phase 8 evaluation data**
+`frontend/src/types.ts`'s `ReadinessResult` bundles Phase 8's evaluation data (`evaluations`) together with Phase 9's readiness verdict (`verdict`/`reasoning`) in one type, and `screens/Result.tsx` renders both together (each competency card compares `score` against `requiredMinScore`, which is itself Phase 9 readiness-threshold logic). Wiring the screen to real data now would mean either fabricating a placeholder verdict (a Phase 9 concept explicitly out of this phase's boundary) or splitting the type/screen ahead of Phase 9 actually needing that split. The real evaluation pipeline is fully built, tested, and reachable via `POST`/`GET /conversations/{id}/evaluate(ion)` — this is a frontend-wiring gap only, not a backend gap. See DECISIONS.md, Phase 8.
+Origin: Phase 8. Owner: Phase 9 (wire `Result` to both real evaluation and real readiness data together).
+
 **P2 — Phase 5 frontend integration not visually verified end-to-end in this environment**
 Backend contract is covered by 5 passing tests plus one successful manual `curl` against a live server; frontend build type-checks clean against that exact contract. But unlike Phase 3/4, no Playwright screenshot of the real Start Scenario screen rendering live backend data exists — background dev processes were repeatedly reclaimed by the sandbox before a screenshot could be taken. Needs one manual local verification pass (`uvicorn` + `npm run dev`, look at the browser) before treating Phase 5 as fully verified to the project's own established bar.
 Origin: Phase 5. Owner: you, before `CHECKPOINT PASSED`.
@@ -36,6 +40,10 @@ Origin: Phase 3. Owner: Phase 21.
 **P3 — MVP scenario seed data rides the same dev-only lifespan guard as schema auto-creation**
 `seed_mvp_scenario()` is idempotent and correct for a single hardcoded MVP scenario, but is not how seeding should work once real scenario authoring exists — no proper seed migration path exists yet. Same bucket/owner as the item above; `seed_mvp_scenario()` is isolated in `scenario/service.py` specifically so a real Phase 21 migration can call it without touching its logic.
 Origin: Phase 5. Owner: Phase 21.
+
+**P3 — Rejected (hallucinated/ungrounded) evidence candidates are silently dropped, not logged anywhere**
+`evaluation/verification.py::verify_evidence` correctly refuses to persist a candidate that fails grounding, but keeps no record of what was rejected or why. Fine for MVP correctness (the invariant this phase exists to build — "only grounded evidence persists" — holds either way), but Phase 15 (Stress Testing) / Phase 18 (AI Evaluation Benchmark) will likely want a rejection log to measure how often extraction actually hallucinates against a real model, not just prove the system survives it when it does.
+Origin: Phase 8. Owner: Phase 15/18.
 
 **P3 — MVP is single-user via a synthetic default user, no real auth**
 `conversation.service.get_or_create_default_user` attributes every conversation to the same synthetic user regardless of who is actually using it. Intentional and explicitly deferred per ARCHITECTURE.md §8 (multi-user auth is Milestone 3 scope); the `user_id` FK already exists specifically so this doesn't require a schema change later.

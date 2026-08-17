@@ -177,3 +177,45 @@ Record of significant architecture/product decisions. Append-only — do not sil
 **Alternatives considered:** A narrow `{buyer_reply: str}` response, requiring a separate `GET` to refresh full state after every turn.
 **Tradeoff:** Slightly larger response payloads (the full transcript on every turn) in exchange for a strictly simpler frontend state model and one less network round-trip per turn.
 **Phase:** 7
+
+### Decision: Evidence candidates reference `turn_index` (an integer already shown in the transcript), never a raw `message_id` (a UUID)
+**Why:** Asking the model for a UUID it was never shown would just invite a different flavor of hallucination — it could only ever copy or invent one. `evaluation/verification.py` deterministically maps the model's `turn_index` back to the real `messages.id` FK in code, so the model never gets to fabricate that identifier either. This mirrors the Phase 1 "LLM proposes, deterministic logic decides" principle at the identifier level, not just the content level.
+**Alternatives considered:** Ask the model to output the real `message_id` directly.
+**Tradeoff:** One extra deterministic lookup step; in exchange, an entire class of "evidence points at a message that doesn't exist" bugs is structurally impossible rather than merely unlikely.
+**Phase:** 8
+
+### Decision: Evidence must be grounded in a REP message, never a BUYER message — enforced both in the extraction prompt and, independently, in deterministic verification
+**Why:** The competencies being scored (discovery, objection_handling, closing) are about the rep's demonstrated behavior. A quote from the buyer, even if verbatim-accurate, cannot be evidence of what the *rep* did. Checking `message.sender == "rep"` in `verify_evidence` — not just instructing the model not to do this — closes the gap between "the model was told not to" and "the system cannot persist it even if the model does anyway," the same defense-in-depth pattern already used for buyer-state leakage (see Phase 6 decisions above).
+**Alternatives considered:** Trust the prompt instruction alone; allow buyer-message evidence with a `sender` field on the Evidence record for context.
+**Tradeoff:** A small amount of legitimate context (e.g., "the buyer explicitly thanked the rep for X") can never be cited as evidence under this rule — acceptable, since the evaluation is scoped to rep competency, not buyer sentiment.
+**Phase:** 8
+
+### Decision: Competency scoring skips the LLM entirely (deterministic result) when a competency has zero verified evidence, or when scoring genuinely fails after `call_structured`'s retry
+**Why:** MASTER_PROMPT.md's COST section: "prefer deterministic logic over LLM calls wherever possible." There is nothing for the model to interpret when there's no evidence, and asking it to score an empty evidence set risks it inventing a plausible-sounding number for behavior that was never observed. The two deterministic fallbacks (`no_evidence_result` / `unavailable_result`) are worded differently so a rep or reviewer can tell "you didn't demonstrate this" apart from "this couldn't be scored" — see `evaluation/scoring.py`.
+**Alternatives considered:** Always call the LLM per competency, including with an empty evidence list, and let it output a 0 with generic text.
+**Tradeoff:** Two fixed deterministic templates instead of always-fresh model prose for these two cases — judged acceptable since neither case has any real signal to phrase originally, and it directly reduces AI cost/hallucination surface per the phase's own instruction to prefer determinism.
+**Phase:** 8
+
+### Decision: Hidden buyer state never enters any Phase 8 prompt (extraction or scoring), at all
+**Why:** Same structural reasoning as the Phase 6 decision "numeric buyer state never enters the reply-generation prompt" — the primary control against leaking something is not including it in what the model receives in the first place. Evaluation is about observable rep behavior in the transcript, not the buyer's hidden mechanics, so there was never a reason for either Phase 8 prompt to reference trust/patience/budget_sensitivity/interest, even as qualitative hints.
+**Alternatives considered:** N/A — no version of this phase's design ever needed hidden state in these prompts.
+**Tradeoff:** None identified.
+**Phase:** 8
+
+### Decision: `POST /conversations/{id}/evaluate` (trigger, idempotent) + `GET /conversations/{id}/evaluation` (fetch), not ARCHITECTURE.md §5's original `/complete` + `/result` sketch
+**Why:** Continues the Phase 7 precedent of diverging from that early sketch where later phases clarified the naming: "complete" is already Phase 7's `/close` endpoint, and "/result" would imply a bundled readiness verdict — which this phase's PHASE BOUNDARY explicitly excludes. Two verbs on the same resource (`evaluate`/`evaluation`) mirrors the existing `POST /conversations` vs. `GET /conversations/{id}` pattern.
+**Alternatives considered:** Reuse `/close` to also trigger evaluation as a side effect (rejected — conflates two distinct actions with two distinct failure modes); a single `/result` endpoint that returns partial data (evaluation only) until Phase 9 adds the verdict (rejected — a `ReadinessResult`-shaped response with no verdict is a worse contract than a clearly-scoped `ConversationEvaluationOut`).
+**Tradeoff:** Frontend's `Result` screen (Phase 4 mock) still cannot be fully wired to real data until Phase 9 adds a readiness endpoint — surfaced as a known limitation below, not resolved unilaterally by inventing a partial/fake verdict this phase.
+**Phase:** 8
+
+### Decision: Evaluation is idempotent by "any existing rows for this conversation" rather than a soft-delete/versioning scheme
+**Why:** The pipeline always writes all three MVP competency evaluations together in one transaction (see `evaluate_conversation`), so "at least one row exists" is a reliable proxy for "this conversation was already evaluated." Re-running `POST .../evaluate` returns the existing rows unchanged rather than re-extracting/re-scoring — avoiding both duplicate rows (the `(conversation_id, competency_id)` unique constraint would reject a naive re-insert anyway) and unnecessary repeat LLM calls, per the COST section.
+**Alternatives considered:** A `force=true` re-evaluation query param; versioned evaluation rows (`evaluations.version`) allowing history.
+**Tradeoff:** No way to re-run evaluation on the same conversation without a manual DB change — acceptable for MVP; revisit only if a real product need for re-evaluation (e.g., after a scoring-rubric change) emerges later.
+**Phase:** 8
+
+### Decision: Frontend not touched this phase — `Result` screen stays on mock data
+**Why:** Inspecting `frontend/src/types.ts` and `screens/Result.tsx` (per this phase's "inspect existing frontend architecture" instruction) shows the Phase 4 `ReadinessResult` type bundles the Phase 8 evaluation data (`evaluations`) together with the Phase 9 readiness verdict (`verdict`/`reasoning`) into a single object, and the screen renders both together (each competency card shows score against `requiredMinScore`, a threshold comparison that is itself Phase 9 readiness logic). Wiring the screen to real Phase 8 data now would require either fabricating a placeholder verdict (a Phase 9 concept this phase must not implement) or splitting the type/screen into two pieces ahead of Phase 9 actually needing that split — both go beyond "if frontend work is NOT required by the Phase 8 control documents, do not invent unnecessary UI scope."
+**Alternatives considered:** Split `ReadinessResult` into `ConversationEvaluationOut`-shaped data (real, Phase 8) + a still-mocked verdict; wire evaluation data into `Result` with a placeholder "verdict pending" state.
+**Tradeoff:** `Result` remains on Phase 4 mock data for one more phase. Real Phase 8 data is fully available and tested via the API (`POST/GET .../evaluate(ion)`) for Phase 9 to consume alongside the real readiness decision, in one coherent frontend change rather than two partial ones. Recorded in KNOWN_ISSUES.md for your review.
+**Phase:** 8

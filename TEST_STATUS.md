@@ -118,3 +118,29 @@ Run with: `cd backend && python -m pytest -v` — **94 passed** (67 Phase 0–6 
 |---|---|
 | All Phase 0–6 backend tests (67) | ✅ still pass, unchanged, now part of the 94 |
 | Frontend build | ✅ still builds clean — `types.ts` additions are additive; `Conversation.tsx` and `mock/buyer.ts` were the only files changed/removed, both explicitly in Phase 7's scope (mock buyer replacement) |
+
+## Backend (Phase 8 additions)
+
+| Test file | Covers | Status | Phase |
+|---|---|---|---|
+| `test_evaluation.py` (26 tests) | Evidence extraction (valid multi-competency extraction, schema-validation retry-once on an invalid `competency_key`, malformed-JSON retry); deterministic verification (grounded quote accepted, ungrounded/fabricated quote rejected, reference to a nonexistent turn rejected, quote attributed to a BUYER message rejected, whitespace/case-tolerant matching); competency scoring (LLM-assisted scoring from verified evidence only, deterministic no-evidence path with zero LLM calls, deterministic degraded-unavailable path distinguishable from the no-evidence path, leak-scrubber unit test); persistence (`Evaluation`+`Evidence` rows correctly linked via FK, exactly 3 rows per conversation always); retrieval (`GET` returns the persisted result, 404 before any evaluation exists, 404 for an unknown conversation); idempotency (repeat `POST .../evaluate` returns identical data with zero additional LLM calls and no duplicate rows); hidden-state/system-prompt/internal-reasoning protection (none of `trust`/`patience`/`budget_sensitivity`/`interest`/`current_buyer_state`/"system prompt"/"internal reasoning"/"chain of thought"/`classified_intent` ever appear in the response); public API schema shape; error handling (404 unknown conversation, 409 conversation not yet completed); empty-transcript behavior (zero-turn conversation evaluates fully deterministically with zero LLM calls); LLM-call ordering across the 3 MVP competencies | PASS | 8 |
+
+Run with: `cd backend && python -m pytest -v` — **120 passed** (94 Phase 0–7 + 26 Phase 8, verified fresh with `dev.db` removed and all LLM-related env vars unset — zero network calls, zero API cost).
+
+## Manual Verification (Phase 8)
+
+| Check | Result |
+|---|---|
+| Full suite passes with zero LLM-related env vars set | ✅ 120 passed |
+| `alembic upgrade head` against a fresh SQLite DB | ✅ all 11 tables created (schema already covered `evaluations`/`evidence`/`competencies` since Phase 2/3 — no new migration was needed for Phase 8) |
+| Backend boots via `uvicorn` and serves real HTTP traffic (not just `TestClient`) | ✅ `curl /health` → `status: ok` |
+| Live end-to-end smoke test against a real running server, no `LLM_API_KEY` set | ✅ create conversation → close with zero turns → `POST /conversations/{id}/evaluate` → all 3 MVP competencies persisted with deterministic score-0 "no evidence observed" results (correct graceful-degradation behavior for an empty transcript) → `GET /conversations/{id}/evaluation` returns the identical persisted result → `POST` against an unknown conversation id returns 404 |
+| `npm run build` (frontend, untouched by this phase — regression check only; see DECISIONS.md/KNOWN_ISSUES.md for why `Result` isn't wired yet) | ✅ 0 type errors |
+| No `.env` tracked in git; no API key present in any tracked file | ✅ confirmed via `git ls-files` and manual review |
+
+## Regression Suite (Phase 8)
+
+| Check | Result |
+|---|---|
+| All Phase 0–7 backend tests (94) | ✅ still pass, unchanged, now part of the 120 |
+| Frontend build | ✅ still builds clean — no frontend files were touched this phase |
