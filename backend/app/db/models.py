@@ -99,6 +99,7 @@ class Conversation(Base):
     state_history: Mapped[list["BuyerStateHistory"]] = relationship(back_populates="conversation")
     evaluations: Mapped[list["Evaluation"]] = relationship(back_populates="conversation")
     readiness_result: Mapped["ReadinessResult"] = relationship(back_populates="conversation", uselist=False)
+    coaching_session: Mapped["CoachingSession"] = relationship(back_populates="conversation", uselist=False)
 
 
 class Message(Base):
@@ -177,3 +178,25 @@ class ReadinessResult(Base):
     computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     conversation: Mapped["Conversation"] = relationship(back_populates="readiness_result")
+
+
+class CoachingSession(Base):
+    """Phase 10 — one per conversation (idempotent, like ReadinessResult).
+    Synthesizes Phase 8's per-competency evidence/diagnosis and Phase 9's
+    readiness verdict into a prioritized coaching narrative. `points` is a
+    JSON list (same established pattern as `thresholds_snapshot` above)
+    of already-grounded {competency_key, evidence_id, message} entries —
+    see app/coaching/verification.py for how "already-grounded" is
+    enforced deterministically before persistence."""
+
+    __tablename__ = "coaching_sessions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    conversation_id: Mapped[str] = mapped_column(ForeignKey("conversations.id"), unique=True)
+    priority_competency_key: Mapped[str] = mapped_column(String(100))
+    priority_reason: Mapped[str] = mapped_column(Text)
+    summary: Mapped[str] = mapped_column(Text)
+    points: Mapped[list] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    conversation: Mapped["Conversation"] = relationship(back_populates="coaching_session")
