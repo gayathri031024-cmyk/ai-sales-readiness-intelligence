@@ -170,3 +170,29 @@ Run with: `cd backend && python -m pytest -v` — **144 passed** (120 Phase 0–
 |---|---|
 | All Phase 0–8 backend tests (120) | ✅ still pass, unchanged, now part of the 144 |
 | Frontend build | ✅ still builds clean — `Result.tsx`/`types.ts` needed no changes; `App.tsx`/`Conversation.tsx` changes type-check correctly against the real API contract |
+
+## Backend (Phase 10 additions)
+
+| Test file | Covers | Status | Phase |
+|---|---|---|---|
+| `test_coaching.py` (23 tests) | `pick_priority` at the unit level (no DB/HTTP/LLM): worst-gap pick when something fails, narrowest-margin pick when everything passes, tie-breaking by fixed MVP competency order, raises on an empty result list; `verify_coaching_points` at the unit level: accepts a valid evidence reference, rejects a fabricated evidence id, rejects a real evidence id cited under the wrong competency, rejects a competency not evaluated this conversation, allows a null evidence id through unchanged; full API-level coaching pipeline (priority matches the worst failing competency end to end, a grounded point with a real evidence id persists correctly, a point citing a fabricated evidence id never reaches the API response); graceful degradation (full LLM outage falls back to a deterministic summary built from the same priority data — verified the priority itself is still correct even with the LLM fully down; malformed-JSON retry-then-succeed); precondition/error handling (`POST .../coaching` before readiness → 409, unknown conversation → 404 on both endpoints, `GET .../coaching` 404 before generated); idempotency (repeat `POST .../coaching` returns identical data, exactly one `coaching_sessions` row, zero additional LLM calls); hidden-state/system-prompt/internal-reasoning protection; public API schema shape | PASS | 10 |
+
+Run with: `cd backend && python -m pytest -v` — **167 passed** (144 Phase 0–9 + 23 Phase 10, verified fresh with `dev.db` removed and all LLM-related env vars unset — zero network calls, zero API cost).
+
+## Manual Verification (Phase 10)
+
+| Check | Result |
+|---|---|
+| Full suite passes with zero LLM-related env vars set | ✅ 167 passed |
+| Found pre-existing, uncommitted `coaching/` code stashed and the actual Phase 9 baseline (144 tests) re-verified in isolation first, before restoring and evaluating the found work on its own merits | ✅ confirmed 144/144 clean at commit `b2edc18` with the found work set aside |
+| `alembic upgrade head` against a fresh SQLite DB | ✅ both migrations apply in order (`9f7e1a8e08c5` → `c054f45455ae`); all 12 tables present, `coaching_sessions` schema matches the ORM model exactly (verified column-by-column via `PRAGMA table_info`) |
+| Backend boots via `uvicorn` and serves real HTTP traffic | ✅ `curl /health` → ok; full manual sequence (create → close → coaching-before-readiness → 409 → evaluate → readiness → coaching → correct deterministic fallback with no `LLM_API_KEY` set → GET returns identical data → 404 for an unknown conversation) all confirmed correct against a real running server |
+| `npm run build` (frontend, untouched this phase — regression check only) | ✅ 0 type errors |
+| No `.env` tracked in git; no accidental artifacts (`dev.db`, `__pycache__`, `.pytest_cache`) committed | ✅ confirmed via `git status --ignored` |
+
+## Regression Suite (Phase 10)
+
+| Check | Result |
+|---|---|
+| All Phase 0–9 backend tests (144) | ✅ still pass, unchanged, now part of the 167 |
+| Frontend build | ✅ still builds clean — no frontend files touched this phase (see KNOWN_ISSUES.md) |

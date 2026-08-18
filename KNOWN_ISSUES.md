@@ -21,6 +21,10 @@ Origin: Phase 7. Owner: you, review before `CHECKPOINT PASSED`; implementation o
 Same sandbox limitation as the Phase 5/7 items above — no Playwright screenshot of the actual `Result` screen rendering a real READY/AT_RISK/NOT_READY verdict in a browser exists. Unlike those two items, this phase did go one step further than a clean `npm run build`: the full request chain was verified live through the actual Vite dev-server proxy (not just direct backend `curl`) — `GET /api/scenarios` → `POST /api/conversations` → `POST /api/conversations/{id}/close` → `POST /api/conversations/{id}/evaluate` → `GET /api/conversations/{id}/result`, the exact sequence `frontend/src/api/readiness.ts` performs, all returning correct data through the proxy that a real browser would also go through. What's still unverified is purely the rendered DOM/visual output of `Result.tsx` against that data. Needs one manual local pass (`uvicorn` + `npm run dev`, click through Start → Conversation → Result in an actual browser) before treating Phase 9's frontend as fully verified to the project's own established bar.
 Origin: Phase 9. Owner: you, before `CHECKPOINT PASSED`.
 
+**P2 — Coaching has no frontend at all yet — API-only**
+`POST`/`GET /conversations/{id}/coaching` are complete, tested (23 tests), and live-smoke-tested against a real running server, but nothing in `frontend/src` references coaching — no type, no adapter, no UI. Unlike Phase 9 (where the existing mock types already matched the real API shape with zero changes needed), a coaching UI would be genuinely new screen real estate with no existing mock/design to slot into, and no control document specifies what it should look like. Building one now would mean guessing at unspecified UI/UX scope — explicitly against this phase's rule 10 ("do not guess or fabricate requirements"). See DECISIONS.md, Phase 10.
+Origin: Phase 10. Owner: you — either specify the coaching UI design for a follow-up commit, or explicitly defer it to a later phase.
+
 **P3 — Turn-submission endpoint returns the full conversation payload, including full message history, on every turn**
 Simpler frontend state model (see DECISIONS.md), but response payload size grows linearly with conversation length — irrelevant at MVP scale (max 12 turns) but worth a lighter-weight response shape if conversations ever get much longer.
 Origin: Phase 7. Owner: revisit only if a later phase's real usage shows this mattering.
@@ -56,6 +60,14 @@ Origin: Phase 9. Owner: Phase 15.
 **P3 — Readiness verdict does not automatically recompute if evaluation scores ever change after the fact**
 Deliberate (see DECISIONS.md, Phase 9) — a `readiness_results` row, once persisted, is treated as authoritative for that conversation rather than silently drifting. No mechanism exists yet (and none is needed yet, since Phase 8 evaluation is itself idempotent/immutable) for a future phase that might allow re-evaluation to also invalidate a stale readiness verdict.
 Origin: Phase 9. Owner: revisit only if a future phase adds evaluation re-computation.
+
+**P3 — Coaching session does not automatically regenerate if readiness/evaluation ever changes after the fact**
+Same deliberate posture as the readiness item directly above, one layer up — see DECISIONS.md, Phase 10.
+Origin: Phase 10. Owner: revisit only if a future phase adds evaluation/readiness re-computation.
+
+**P3 — Coaching's priority pick carries no cross-competency causal reasoning (e.g., "weak closing traced back to weak discovery")**
+MASTER_PROMPT.md's COMPETENCY/SKILL GRAPH section gestures at this kind of root-cause claim, but explicitly requires it never be made "without evidence" — and no such cross-competency evidence exists without `skill_graph_edges` (Phase 14, not yet built; ARCHITECTURE.md explicitly deferred "full skill graph with dependency modeling" past Milestone 1/2). Phase 10's priority pick and its stated reason are both single-competency facts (that competency's own gap or margin) — correct and evidence-backed, but narrower than what a full root-cause engine would eventually provide.
+Origin: Phase 10. Owner: Phase 14.
 
 ## Resolved
 

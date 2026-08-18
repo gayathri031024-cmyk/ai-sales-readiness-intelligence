@@ -90,3 +90,37 @@ Real-model evaluation against `AnthropicProvider` for both extraction and scorin
 Nothing to evaluate here in the usual sense: `readiness/decision.py` is pure Python (a threshold comparison and a reasoning-string builder), and `readiness/service.py` never calls an LLM provider, directly or transitively — it reads already-persisted `Evaluation` rows and already-seeded `ScenarioCompetencyThreshold` rows, nothing else. This is by design (ARCHITECTURE.md §3) and is test-enforced: `test_readiness_computation_makes_zero_llm_calls` asserts `mock_provider.calls` is identical in length before and after both `POST .../readiness` and `GET .../result`.
 
 The one thing worth recording here is not an AI-evaluation result but an explicit placeholder, in the same spirit as `scenario/service.py`'s own MVP threshold values: `AT_RISK_MARGIN = 10` (the point-gap boundary between AT_RISK and NOT_READY) is a reasonable default, not a value derived from real sales-conversation data — see DECISIONS.md, Phase 9, and KNOWN_ISSUES.md for the revisit trigger (Phase 15, once real transcripts exist to check whether a 10-point gap actually reads as "borderline" to a human).
+
+## Phase 10 addendum — coaching is the third LLM-touching piece of the system, with the narrowest prompt yet
+
+Phase 10 introduces one new LLM-touching stage: `coaching/generation.py`. Same caveat as every prior addendum: built and tested entirely against `MockLLMProvider`, so nothing here is evidence about how a *real* Claude model behaves at this specific prompt — only evidence that the surrounding system behaves correctly given whatever the model could produce.
+
+### Methodology (Phase 10 scope)
+
+- **The model never decides anything it's being asked to write about** — `coaching/priority.py::pick_priority` runs entirely before the LLM is called, deterministically, from already-persisted Phase 8/9 data. The model is handed the pick and instructed not to change it (`generation.py`'s system prompt: "Do NOT choose a different priority"). This is stricter than Phase 8/9's own LLM boundaries in one respect: even Phase 8's evidence extraction lets the model choose *which* transcript lines matter; Phase 10's model doesn't even get to choose which competency matters.
+- **Evidence-id grounding, one layer removed from the raw transcript** — the coaching model never sees the transcript at all, only already-verified `Evidence` row quotes (with their ids). `coaching/verification.py` then re-checks any cited `evidence_id` against the exact set shown for that competency, the same "propose vs. decide" split as Phase 8's `verify_evidence`. Covered directly: `test_verify_coaching_points_rejects_a_fabricated_evidence_id`, `test_verify_coaching_points_rejects_evidence_id_from_a_different_competency`, plus an end-to-end proof (`test_coaching_point_with_fabricated_evidence_id_never_reaches_the_api_response`) that a fabricated id mixed into an otherwise-valid coaching response never reaches the public API.
+- **Graceful degradation preserves the deterministic part** — `test_coaching_falls_back_to_deterministic_summary_when_llm_completely_unavailable` confirms that with the LLM fully down, the priority pick (`objection_handling`, the worst-gap competency in that test) is still exactly correct, because it was never the LLM's job to get right in the first place. Only the prose summary/points degrade to a fixed fallback built from the same deterministic inputs.
+- **Hidden-state / system-prompt / internal-reasoning protection** — structurally guaranteed the same way as Phase 8/9 (the coaching prompt never receives hidden buyer state, system-prompt text, or raw model reasoning to begin with — only already-public evaluation/readiness data). Covered by `test_coaching_response_never_exposes_hidden_buyer_state`, `test_coaching_response_never_exposes_system_prompt_or_internal_reasoning`.
+
+### Phase 0 Assumptions to Validate
+
+Phase 0 named four Milestone-1 assumptions (buyer state persistence/no-leakage, evidence faithfulness, scoring consistency, threshold legibility) — all still open exactly as recorded in prior addenda; Phase 10 is Milestone 2 scope and doesn't add a new Phase-0-level assumption of its own. The closest Phase 10 comes to a testable assumption: **does grounding coaching points to specific evidence ids actually produce coaching a rep finds more credible/actionable than an ungrounded score?** — a product question, not yet measurable without real users, and out of scope for this phase's automated tests.
+
+### Test Scenarios (Phase 10 — structural, mock-provider-based)
+
+| Scenario | What it validates |
+|---|---|
+| Coaching response citing a real evidence id for the correct competency | Point persists and appears in the public API response |
+| Coaching response citing a real evidence id, but for the *wrong* competency | Rejected — a real id isn't enough; it has to be real *for the competency it's cited under* |
+| Coaching response citing a fabricated evidence id | Rejected, and the fabricated id string itself never appears anywhere in the API response (not just silently dropped from a list — actively absent from the serialized output) |
+| Full LLM outage during coaching generation | Falls back to a fixed deterministic summary; the priority pick (computed before the LLM was ever called) is unaffected and still correct |
+| Re-running `POST .../coaching` on an already-generated session | Zero additional LLM calls, identical response, no duplicate `coaching_sessions` row |
+| `POST .../coaching` before readiness has been computed | 409, not a crash and not a silent auto-compute of readiness |
+
+### Known AI Failures
+
+*(none yet against a real model — same as every prior phase.)* First candidate once a real `LLM_API_KEY` is added, specific to this phase: does a real model ever comply with "cite an evidence_id or leave it null" cleanly, or does it tend to guess a plausible-looking id when it's uncertain (the exact failure mode `verify_coaching_points` exists to catch) — worth an explicit real-model check before trusting the grounding rate this test suite implies.
+
+### Next (deferred past Phase 10, by design)
+
+Real-model evaluation against `AnthropicProvider` for coaching generation, same test scenarios above, once a key is added at final integration — unchanged deferral reasoning from every prior phase.
