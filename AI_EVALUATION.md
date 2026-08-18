@@ -84,3 +84,9 @@ Phase 8 introduces two new LLM-touching stages (evidence extraction, competency 
 ### Next (deferred past Phase 8, by design)
 
 Real-model evaluation against `AnthropicProvider` for both extraction and scoring, same test scenarios above, once a key is added at final integration — unchanged deferral reasoning from Phase 6.
+
+## Phase 9 addendum — the readiness engine makes no LLM calls at all
+
+Nothing to evaluate here in the usual sense: `readiness/decision.py` is pure Python (a threshold comparison and a reasoning-string builder), and `readiness/service.py` never calls an LLM provider, directly or transitively — it reads already-persisted `Evaluation` rows and already-seeded `ScenarioCompetencyThreshold` rows, nothing else. This is by design (ARCHITECTURE.md §3) and is test-enforced: `test_readiness_computation_makes_zero_llm_calls` asserts `mock_provider.calls` is identical in length before and after both `POST .../readiness` and `GET .../result`.
+
+The one thing worth recording here is not an AI-evaluation result but an explicit placeholder, in the same spirit as `scenario/service.py`'s own MVP threshold values: `AT_RISK_MARGIN = 10` (the point-gap boundary between AT_RISK and NOT_READY) is a reasonable default, not a value derived from real sales-conversation data — see DECISIONS.md, Phase 9, and KNOWN_ISSUES.md for the revisit trigger (Phase 15, once real transcripts exist to check whether a 10-point gap actually reads as "borderline" to a human).

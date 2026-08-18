@@ -144,3 +144,29 @@ Run with: `cd backend && python -m pytest -v` — **120 passed** (94 Phase 0–7
 |---|---|
 | All Phase 0–7 backend tests (94) | ✅ still pass, unchanged, now part of the 120 |
 | Frontend build | ✅ still builds clean — no frontend files were touched this phase |
+
+## Backend (Phase 9 additions)
+
+| Test file | Covers | Status | Phase |
+|---|---|---|---|
+| `test_readiness.py` (24 tests) | `decide_readiness` at the unit level (no DB/HTTP): all-pass → READY, score exactly equal to threshold still passes, a gap of exactly `AT_RISK_MARGIN` (10) → AT_RISK, a gap of `AT_RISK_MARGIN + 1` → NOT_READY, reasoning text names every failing competency by display name and required minimum, raises on an empty competency-results list, `CompetencyResult.gap`/`.passed` boundary math; full API-level readiness computation (READY when all competencies clear their threshold, NOT_READY on a wide miss, AT_RISK on a narrow miss); precondition enforcement (`POST .../readiness` before evaluation → 409, unknown conversation → 404 on all three endpoints); retrieval (`GET .../readiness` 404 before computed, returns identical persisted verdict after); idempotency (repeat `POST .../readiness` returns identical data, exactly one `readiness_results` row, verdict never drifts); the combined `GET .../result` endpoint (lazily computes-and-persists readiness if not yet explicitly triggered, includes `required_min_score` per competency alongside its scenario threshold, 404 if evaluation hasn't run yet, public schema shape); hidden-state protection (no `trust`/`patience`/`budget_sensitivity`/`interest`/`current_buyer_state` in either response); zero-LLM-call guarantee (`mock_provider.calls` count unchanged before/after both readiness endpoints); threshold-snapshot persistence (`readiness_results.thresholds_snapshot` matches the scenario's actual seeded thresholds `{discovery: 60, objection_handling: 70, closing: 65}` at computation time) | PASS | 9 |
+
+Run with: `cd backend && python -m pytest -v` — **144 passed** (120 Phase 0–8 + 24 Phase 9, verified fresh with `dev.db` removed and all LLM-related env vars unset — zero network calls, zero API cost).
+
+## Manual Verification (Phase 9)
+
+| Check | Result |
+|---|---|
+| Full suite passes with zero LLM-related env vars set | ✅ 144 passed |
+| `alembic upgrade head` against a fresh SQLite DB | ✅ all 11 tables created (`readiness_results` already existed since Phase 2/3 — no new migration was needed for Phase 9 either) |
+| Backend boots via `uvicorn` and serves real HTTP traffic | ✅ `curl /health` → `status: ok`; full manual sequence (create → close zero-turn conversation → evaluate → readiness → result) against a real running server returned the correct deterministic NOT_READY verdict for an evidence-free conversation |
+| `npm run build` (frontend) | ✅ 0 type errors |
+| Live integration through the actual Vite dev-server proxy (not just direct backend `curl`) | ✅ started `uvicorn` on :8000 and `vite dev` on :5173 together; `GET /api/scenarios` → `POST /api/conversations` → `POST /api/conversations/{id}/close` → `POST /api/conversations/{id}/evaluate` → `GET /api/conversations/{id}/result` — the exact sequence `frontend/src/api/readiness.ts` performs — all returned correct data through the proxy; main page (`GET /`) returned 200. Rendered browser DOM/visual output was NOT captured (see KNOWN_ISSUES.md — same sandbox limitation as Phase 5/7, though this phase verified one layer deeper than either of those did) |
+| No `.env` tracked in git; no accidental artifacts (`dev.db`, `__pycache__`, `.pytest_cache`) committed | ✅ confirmed via `git status --ignored` — all present locally but correctly excluded by `.gitignore`, none tracked |
+
+## Regression Suite (Phase 9)
+
+| Check | Result |
+|---|---|
+| All Phase 0–8 backend tests (120) | ✅ still pass, unchanged, now part of the 144 |
+| Frontend build | ✅ still builds clean — `Result.tsx`/`types.ts` needed no changes; `App.tsx`/`Conversation.tsx` changes type-check correctly against the real API contract |

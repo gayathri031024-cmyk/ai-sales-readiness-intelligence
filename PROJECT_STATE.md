@@ -2,49 +2,49 @@
 
 **Project:** AI Sales Readiness Intelligence
 
-**Current Phase:** 8 — Evaluation Engine
-**Current Checkpoint:** Phase 8 — awaiting CHECKPOINT PASSED
+**Current Phase:** 9 — Readiness Engine
+**Current Checkpoint:** Phase 9 — awaiting CHECKPOINT PASSED
 
-**Completed Phases:** Phase 0 — Product Strategy (PASSED); Phase 1 — System Architecture (PASSED); Phase 2 — Data Model (PASSED); Phase 3 — Project Foundation (PASSED); Phase 4 — Core UX (PASSED); Phase 5 — Scenario Engine (PASSED — you explicitly confirmed `CHECKPOINT PASSED — Phase 5`; the P2 visual-verification item remains open in KNOWN_ISSUES.md for the record, not re-litigated); Phase 6 — Adaptive AI Buyer (PASSED — you explicitly confirmed `CHECKPOINT PASSED — Phase 6` after review); Phase 7 — Conversation Engine (PASSED — you explicitly confirmed `CHECKPOINT PASSED — Phase 7` after review)
+**Completed Phases:** Phase 0 — Product Strategy (PASSED); Phase 1 — System Architecture (PASSED); Phase 2 — Data Model (PASSED); Phase 3 — Project Foundation (PASSED); Phase 4 — Core UX (PASSED); Phase 5 — Scenario Engine (PASSED); Phase 6 — Adaptive AI Buyer (PASSED); Phase 7 — Conversation Engine (PASSED); Phase 8 — Evaluation Engine (PASSED — you explicitly confirmed `CHECKPOINT PASSED — Phase 8`)
 
-**Current Objective:** Get sign-off that the Evaluation Engine correctly turns a completed conversation's transcript into evidence-grounded, per-competency scores — evidence extraction, deterministic verification (the anti-hallucination invariant), competency scoring, persistence, and a public evaluation API — all still fully testable without a real API key, before starting Phase 9 (Readiness Engine).
+**Current Objective:** Get sign-off that the Readiness Engine correctly turns Phase 8's persisted competency scores into a deterministic READY/NOT_READY/AT_RISK verdict against the scenario's real thresholds — with zero LLM calls anywhere in the module, correct idempotency, and the frontend Result screen now consuming real data end to end.
 
 **Completed Work:**
-- Phases 0–7 approved (see CHANGELOG.md for detail)
-- Phase 8 Evaluation Engine built and verified by automated test + live manual smoke test:
-  - Verified the Phase 7 baseline first (94/94 tests, clean frontend build, working tree clean) — surfaced and got your explicit sign-off on the Phase 7 checkpoint discrepancy before starting any Phase 8 work
-  - Confirmed the DB schema (`evaluations`, `evidence`, `competencies`) already existed from Phase 2/3, purpose-built for this exact phase — **no new Alembic migration needed**; verified via `alembic upgrade head` against a fresh DB (all 11 tables present)
-  - `app/evaluation/extraction.py` — evidence-candidate structured output (`EvidenceCandidate`/`EvidenceExtractionResult`); candidates reference `turn_index` (already visible in the transcript shown to the model), never a raw `message_id`, so the deterministic turn→message mapping happens in code, never in the model's own output
-  - `app/evaluation/verification.py` — the deterministic anti-hallucination gate (pure function, no LLM, no DB): a candidate persists only if its turn exists, that message's `sender` is `"rep"` (never a buyer line, checked independently of the extraction prompt's own instruction), and the quote is an actual substring of what was really said
-  - `app/evaluation/scoring.py` — per-competency scoring, LLM-assisted only when there's verified evidence to interpret; deterministic `no_evidence_result`/`unavailable_result` (zero LLM calls) otherwise, worded differently so a reviewer can tell "not demonstrated" apart from "couldn't be scored"; same defense-in-depth regex leak-scrubber pattern as `buyer/response.py`
-  - `app/evaluation/service.py` — orchestrates extraction → verification → scoring → persistence as one DB transaction (rollback on unexpected failure); idempotent — a repeat `evaluate_conversation` call returns the existing rows rather than re-computing or hitting the `(conversation_id, competency_id)` unique constraint
-  - `app/evaluation/schemas.py` — public API contract (`ConversationEvaluationOut`/`EvaluationOut`/`EvidenceOut`), structurally excludes hidden buyer state, system-prompt/provider detail, and internal reasoning
-  - `app/api/routes/evaluation.py` — `POST /conversations/{id}/evaluate` (idempotent trigger, 404/409 on bad state), `GET /conversations/{id}/evaluation` (fetch, 404 if not yet evaluated); reuses the existing `get_llm_provider` dependency, so tests never need a real key
-  - 26 new backend tests (120 total, all passing) — extraction/verification/scoring at both the unit level (pure `verify_evidence`, deterministic scoring fallbacks) and full API-integration level, including a direct end-to-end proof that a fabricated quote mixed into an otherwise-valid extraction response never reaches the public API
-  - Live manual smoke test against a real running `uvicorn` server (not just `TestClient`): health check, conversation creation, immediate close (zero turns), evaluation trigger with no `LLM_API_KEY` set (correct deterministic "no evidence observed" result for all 3 competencies), evaluation retrieval, and 404 handling — all confirmed correct
-  - Frontend: intentionally **not** touched this phase. Inspected `types.ts`/`screens/Result.tsx` per the "inspect existing frontend architecture" instruction — the Phase 4 `ReadinessResult` type bundles Phase 8 evaluation data together with the Phase 9 readiness verdict in one object/screen, so wiring `Result` now would mean fabricating a placeholder verdict, which is out of this phase's boundary. Recorded as a known limitation for Phase 9 to resolve in one coherent change, not decided unilaterally here. `npm run build` re-verified clean as a pure regression check (0 type errors, no files changed).
+- Phases 0–8 approved (see CHANGELOG.md for detail)
+- Phase 9 Readiness Engine built and verified by automated test + live manual smoke test + live proxy integration check:
+  - Verified the Phase 8 baseline first (120/120 tests, clean git state)
+  - Found `app/readiness/decision.py`, `schemas.py`, `service.py` already present, uncommitted, at the start of this phase — origin unknown, not something written earlier in this session or present when Phase 8 inspected the same directory. Treated as an unverified discrepancy per the standing working rule ("do not trust... assumptions"): read against the actual DB schema (`db/models.py`) and every relevant control document (ARCHITECTURE.md §3, MASTER_PROMPT.md, DATA_MODEL.md, `scenario/service.py`'s real seeded thresholds) — structurally consistent with all of them — then proven correct by writing and running 24 real tests against it, not accepted on inspection alone. One real bug was found and fixed in the process, but it was in the test fixture, not the found code. Full account in DECISIONS.md, Phase 9.
+  - `app/readiness/decision.py` — pure, deterministic `decide_readiness()`: READY if every competency clears its threshold; NOT_READY or AT_RISK depending on whether the worst gap among failing competencies is within `AT_RISK_MARGIN = 10` points or beyond it; reasoning text names every failing competency by score and required minimum. Zero LLM calls, test-enforced.
+  - `app/readiness/service.py` — `compute_and_persist_readiness` (idempotent — a persisted verdict is treated as authoritative, never silently recomputed), `get_readiness` (fetch-only), `get_conversation_result` (combined evaluations+thresholds+verdict shape for the frontend). Persists `thresholds_snapshot` (actual scenario thresholds at computation time) on every row. Deliberately never triggers Phase 8's evaluation step itself, even lazily.
+  - Built the missing API layer: `app/api/routes/readiness.py` (`POST`/`GET /conversations/{id}/readiness`, `GET /conversations/{id}/result`), wired into `main.py`. 409 if evaluation hasn't run yet; 404 for unknown conversations/not-yet-computed readiness.
+  - 24 new backend tests (144 total, all passing) — `decide_readiness` boundary logic at the unit level, full API-level READY/NOT_READY/AT_RISK coverage, idempotency (zero duplicate rows, verdict never drifts), the combined `/result` endpoint's lazy-compute behavior, hidden-state protection, zero-LLM-call guarantee, and `thresholds_snapshot` persistence verified against real scenario data
+  - No new migration needed — confirmed via `alembic upgrade head` against a fresh DB (`readiness_results` already existed from Phase 2/3)
+  - Frontend wired to real data: new `frontend/src/api/readiness.ts` sequences Phase 8's evaluation trigger and Phase 9's result fetch (the backend deliberately never chains them); `App.tsx`/`Conversation.tsx` now thread the real conversation id through instead of mock data or a raw transcript; deleted the now-orphaned `mock/readiness.ts`. `Result.tsx`/`types.ts` needed **no changes** — the Phase 4 mock-data types already matched the real API shape field-for-field.
+  - Live manual verification: direct backend `curl` smoke test (create → close → evaluate → readiness → result, correct NOT_READY verdict for a zero-evidence conversation; 409 precondition confirmed), plus — one layer deeper than any prior phase — a live integration check through the **actual Vite dev-server proxy** (`uvicorn` + `vite dev` running together), confirming the exact request sequence `api/readiness.ts` performs all returns correct data through the real proxy path a browser would use. Rendered browser DOM/visual output was not captured — see Known P2 below.
+  - Checked for and confirmed no accidental artifacts (`.env`, `dev.db`, `__pycache__`, `.pytest_cache`) are tracked in git — all correctly excluded by the existing `.gitignore`.
 
-**In Progress:** Awaiting your review of Phase 8.
+**In Progress:** Awaiting your review of Phase 9.
 
-**Next Action:** Review this checkpoint report. If acceptable, say `CHECKPOINT PASSED` to begin Phase 9 — Readiness Engine (deterministic READY/NOT_READY/AT_RISK decision from Phase 8's competency scores + scenario-specific thresholds; also the natural point to finally wire the frontend `Result` screen to real data, since Phase 9 supplies the missing verdict half of that screen).
+**Next Action:** Review this checkpoint report. If acceptable, say `CHECKPOINT PASSED` to begin Phase 10 — AI Coach (the first phase of Milestone 2: root-cause diagnosis and personalized coaching built from Phase 8's evidence + Phase 9's verdict — explicitly out of Phase 9's own boundary, which produced the verdict only, no coaching, no targeted drills, no adaptive difficulty).
 
 **Known P0:** None.
 **Known P1:** None.
 **Known P2:**
-- `Result` screen still renders Phase 4 mock data — not wired to real Phase 8 evaluation data this phase (see KNOWN_ISSUES.md and DECISIONS.md for the reasoning; owned by Phase 9).
-- Phase 5 frontend integration still not visually verified end-to-end in this sandbox (unchanged, pre-existing).
-- Phase 7 frontend conversation UI not visually verified end-to-end in this sandbox (unchanged, pre-existing) — same environment limitation (background dev processes reclaimed between tool calls).
+- Phase 9 frontend Result integration not visually screenshot-verified in an actual browser this environment — same sandbox limitation as Phase 5/7, though this phase went one step further than either (full request chain verified live through the real Vite proxy, not just a clean `npm run build`). See KNOWN_ISSUES.md.
+- Phase 5 and Phase 7 frontend integration still carry the same pre-existing, unresolved visual-verification gap (unchanged this phase).
 - No scripted buyer opening line — unchanged, pre-existing (Phase 7 decision, still under your review).
 
 **Known P3:**
-- Rejected (hallucinated/ungrounded) evidence candidates are silently dropped, not logged anywhere — fine for MVP correctness, but Phase 15/18 will likely want a rejection log to measure real-model hallucination rates.
+- `AT_RISK_MARGIN = 10` is a placeholder judgment call, not calibrated against real transcripts — same category as the scenario threshold values themselves. Revisit trigger: Phase 15.
+- Readiness verdict does not auto-recompute if evaluation scores ever change after the fact — deliberate (see DECISIONS.md, Phase 9), revisit only if a future phase adds evaluation re-computation.
+- Rejected (hallucinated/ungrounded) evidence candidates are silently dropped, not logged anywhere — Phase 15/18 owner.
 - `buyer_state_history` unbounded growth (Phase 20/21).
 - Dev-mode auto schema creation needs an explicit production guard (Phase 21).
 - MVP scenario seeding rides the same dev-only guard (Phase 21).
-- `AnthropicProvider` still never exercised against the real Anthropic API for any module (buyer, or now evaluation) — needs one live smoke test once a real `LLM_API_KEY` is added.
-- Turn-submission responses include the full message history on every turn — irrelevant at MVP scale (max 12 turns).
-- MVP is single-user via a synthetic default user (`get_or_create_default_user`) — intentional, `user_id` FK already in place for when real auth arrives (Milestone 3).
+- `AnthropicProvider` still never exercised against the real Anthropic API for any module — needs one live smoke test once a real `LLM_API_KEY` is added.
+- Turn-submission responses include the full message history on every turn — irrelevant at MVP scale.
+- MVP is single-user via a synthetic default user — intentional, `user_id` FK already in place for Milestone 3.
 
 **Technical Debt:** Same as before, plus the P3 items above.
-**Last Successful Test:** `pytest -v` (backend) — 120 passed, run fresh with `dev.db` removed and all LLM-related env vars unset. `npm run build` (frontend) — clean, 0 type errors (regression check only, no frontend files changed this phase). `alembic upgrade head` — clean against a fresh DB, all 11 tables present. Live `uvicorn` smoke test — health, conversation creation/close, evaluation trigger with graceful degradation, evaluation retrieval, and 404 handling all confirmed correct via `curl`.
-**Current Blockers:** Waiting on your review + `CHECKPOINT PASSED` for Phase 8.
+**Last Successful Test:** `pytest -v` (backend) — 144 passed, run fresh with `dev.db` removed and all LLM-related env vars unset. `npm run build` (frontend) — clean, 0 type errors, run fresh. `alembic upgrade head` — clean against a fresh DB, all 11 tables present. Live `uvicorn` smoke test and live Vite-proxy integration check both confirmed correct request/response behavior end to end.
+**Current Blockers:** Waiting on your review + `CHECKPOINT PASSED` for Phase 9.
