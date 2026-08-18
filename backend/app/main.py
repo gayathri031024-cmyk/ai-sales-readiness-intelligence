@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from app.api.routes.conversation import router as conversation_router
 from app.api.routes.evaluation import router as evaluation_router
 from app.api.routes.health import router as health_router
+from app.api.routes.readiness import router as readiness_router
 from app.api.routes.scenario import router as scenario_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
@@ -39,8 +40,9 @@ app.include_router(health_router, tags=["health"])
 app.include_router(scenario_router)
 app.include_router(conversation_router)
 app.include_router(evaluation_router)
+app.include_router(readiness_router)
 
 
 @app.get("/")
 def root() -> dict:
-    return {"message": f"{settings.app_name} API — Phase 8: Evaluation Engine"}
+    return {"message": f"{settings.app_name} API — Phase 9: Readiness Engine"}
