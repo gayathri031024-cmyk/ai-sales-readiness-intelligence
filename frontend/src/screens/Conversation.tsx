@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import type { Conversation as ConversationRecord, Scenario, TranscriptMessage } from "../types";
+import type { Conversation as ConversationRecord, Scenario } from "../types";
 import { closeConversation, sendTurn, startConversation } from "../api/conversation";
 
 interface Props {
   scenario: Scenario;
-  onComplete: (transcript: TranscriptMessage[]) => void;
+  onComplete: (conversationId: string) => void;
 }
 
 /**
@@ -70,7 +70,7 @@ export function Conversation({ scenario, onComplete }: Props) {
     if (!conversation) return;
     try {
       const updated = isTerminal ? conversation : await closeConversation(conversation.id);
-      onComplete(updated.messages);
+      onComplete(updated.id);
     } catch (err) {
       setTurnError((err as Error).message);
     }
