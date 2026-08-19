@@ -222,3 +222,29 @@ Run with: `cd backend && python -m pytest -v` — **183 passed** (167 Phase 0–
 |---|---|
 | All Phase 0–10 backend tests (167) | ✅ still pass, unchanged, now part of the 183 |
 | Frontend build | ✅ still builds clean — no frontend files touched this phase (see KNOWN_ISSUES.md) |
+
+## Backend (Phase 12 additions)
+
+| Test file | Covers | Status | Phase |
+|---|---|---|---|
+| `test_difficulty.py` (31 tests) | `recommend_difficulty` at the unit level (no DB/HTTP/LLM): NOT_READY steps the difficulty down one rung, NOT_READY at the floor ("easy") correctly clamps to "maintain" rather than stepping off the ladder, AT_RISK always stays put, READY with a narrow margin (below `READY_COMFORTABLE_MARGIN`) stays put, READY with a comfortable margin steps up one rung, READY comfortable at the ceiling ("hard") correctly clamps to "maintain", the exact `READY_COMFORTABLE_MARGIN` boundary tested on both sides (margin exactly at threshold → increase; one point below → maintain), raises `NoCompetencyResultsError` on an empty result list, raises `UnknownDifficultyError` on an invalid current-difficulty value, determinism across two calls with identical input, a parametrized sweep across all 9 verdict×difficulty combinations confirming the recommended value is always a valid difficulty level, a living assertion that the function signature contains no provider/LLM parameter at all; full API-level pipeline for all three verdict outcomes (NOT_READY→decrease, AT_RISK→maintain, READY-narrow→maintain, READY-comfortable→increase) driven through real evaluate→readiness calls; zero-LLM guarantee (`mock_provider.calls` count unchanged before/after two consecutive `GET` calls); identical output across two consecutive `GET` calls (the "no persistence" analogue of idempotency, since this endpoint persists nothing); precondition/error handling (`GET .../difficulty-recommendation` before readiness → 409, unknown conversation → 404); hidden-state/system-prompt protection; public API schema shape | PASS | 12 |
+
+Run with: `cd backend && python -m pytest -v` — **214 passed** (183 Phase 0–11 + 31 Phase 12, verified fresh with `dev.db` removed and all LLM-related env vars unset — zero network calls, zero API cost; this phase makes zero LLM calls even when a key IS configured, so this baseline is not merely a degraded-mode result).
+
+## Manual Verification (Phase 12)
+
+| Check | Result |
+|---|---|
+| Full suite passes with zero LLM-related env vars set | ✅ 214 passed |
+| No unexplained pre-existing files found at the start of this phase | ✅ confirmed via `git status` and a targeted `find` for any `*adaptive*`/`*difficulty*` files before any work began — clean baseline, no discrepancy to investigate |
+| `alembic upgrade head` against a fresh SQLite DB | ✅ all three migrations apply in order, unchanged from Phase 11 (this phase adds no migration — no new table, no new column); all 13 tables present |
+| Backend boots via `uvicorn` and serves real HTTP traffic | ✅ `curl /health` → ok; full manual sequence (create → close → difficulty-before-readiness → 409 → evaluate [degraded, no `LLM_API_KEY` set, all competencies score 0] → readiness [correctly NOT_READY] → difficulty-recommendation → correctly recommends `"decrease"` from `"standard"` to `"easy"` with a human-readable explanation → two consecutive `GET` calls return byte-identical output → 404 for an unknown conversation → route confirmed present in the live OpenAPI schema) all confirmed correct against a real running server |
+| `npm run build` (frontend, untouched this phase — regression check only) | ✅ 0 type errors |
+| No `.env` tracked in git; no accidental artifacts (`dev.db`, `__pycache__`, `.pytest_cache`) committed | ✅ confirmed via `git status --ignored`; an incidental, unrelated `frontend/package-lock.json` metadata-only diff from a regression `npm install` was identified and reverted before committing (no dependency version changes — pure lockfile churn) |
+
+## Regression Suite (Phase 12)
+
+| Check | Result |
+|---|---|
+| All Phase 0–11 backend tests (183) | ✅ still pass, unchanged, now part of the 214 |
+| Frontend build | ✅ still builds clean — no frontend files touched this phase (see KNOWN_ISSUES.md) |

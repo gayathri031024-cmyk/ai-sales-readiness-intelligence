@@ -134,3 +134,15 @@ The one thing worth recording is what this phase *doesn't* need to evaluate that
 ### Next (deferred past Phase 11, by design)
 
 Nothing — this phase has no LLM component to eventually validate against a real model. The next addendum requiring one will be whichever future phase adds the reassessment mechanism (see KNOWN_ISSUES.md), if that phase turns out to need any LLM-assisted comparison logic rather than a purely deterministic score-delta check.
+
+## Phase 12 addendum — adaptive difficulty makes no LLM calls at all, same as readiness and drills
+
+Nothing to evaluate here in the AI-behavior sense, for the same reason as Phase 11: `difficulty/decision.py` is pure Python — a threshold comparison against an already-decided verdict and an already-computed margin, plus a reasoning-string builder, exactly mirroring the shape of `readiness/decision.py::decide_readiness` one layer up. It has no code path to an LLM provider at all (test-enforced directly: `test_recommend_difficulty_never_calls_anything_ai_related` asserts the function's own signature contains no provider parameter, and `test_difficulty_recommendation_makes_zero_llm_calls` asserts `mock_provider.calls` is unchanged before and after two consecutive `GET` calls). This isn't merely tested behavior — it's this phase's own explicit, non-negotiable instruction: "The implementation must remain deterministic and must NOT allow an LLM to directly decide the difficulty."
+
+The one thing worth recording, continuing the pattern named in the Phase 11 addendum directly above: this phase inherits its correctness entirely from work three phases already did (Phase 8's evaluation scores, Phase 5's scenario thresholds, Phase 9's readiness verdict) — there was no new hallucination surface, no new grounding question, and no new degradation path to design, because there is nothing here for a model to get wrong in the first place. The chain now reads: evaluation (Phase 8, real LLM-reliability engineering) → readiness (Phase 9, pure Python, inherits) → coaching (Phase 10, real LLM-reliability engineering, but on a narrower surface) → drills (Phase 11, pure Python, inherits) → adaptive difficulty (Phase 12, pure Python, inherits). Two of the pipeline's five stages so far do genuine AI-reliability work; the other three are downstream consumers of it.
+
+One placeholder worth naming explicitly, same spirit as `AT_RISK_MARGIN` before it: `READY_COMFORTABLE_MARGIN = 10` (the point-margin boundary between "READY, but stay put" and "READY, step up a difficulty level") is a reasonable default that deliberately reuses `AT_RISK_MARGIN`'s own value and reasoning, not a value derived from real sales-conversation data — see DECISIONS.md, Phase 12, and KNOWN_ISSUES.md for the revisit trigger (Phase 15, same as `AT_RISK_MARGIN` itself).
+
+### Next (deferred past Phase 12, by design)
+
+Nothing — this phase has no LLM component to eventually validate against a real model, for the same reason as Phase 11's identical conclusion.

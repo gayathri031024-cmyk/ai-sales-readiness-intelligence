@@ -37,6 +37,14 @@ Origin: Phase 11. Owner: a dedicated future phase — not the same concept as Ph
 The MVP has exactly one seeded scenario — there is no scenario library or authoring capability for a drill to select a *different* scenario from. `Drill.practice_scenario_id` is always identical to the origin conversation's own `scenario_id`; it exists now so a future multi-scenario phase can start varying it without a schema change, but currently carries no new information. See DECISIONS.md, Phase 11, for the full reasoning.
 Origin: Phase 11. Owner: whichever future phase adds a scenario library.
 
+**P2 — Adaptive difficulty has no frontend at all yet — API-only, same reasoning as coaching/drills**
+`GET /conversations/{id}/difficulty-recommendation` is complete, tested (31 tests), and live-smoke-tested against a real running server, but nothing in `frontend/src` references it — no type, no adapter, no UI. No control document specifies what a difficulty-recommendation UI should look like, and it would sit downstream of the still-unbuilt coaching/drill UI chain. See DECISIONS.md, Phase 12.
+Origin: Phase 12. Owner: you — same call as the coaching/drills items above, ideally decided together since they're the same unbuilt UI chain.
+
+**P2 — Adaptive difficulty is advisory only against the MVP's single seeded scenario — there is no "easy" or "hard" scenario to actually route a rep to**
+`recommend_difficulty` can correctly recommend `"easy"` or `"hard"` today (e.g., a NOT_READY verdict recommends stepping down from `"standard"` to `"easy"`), but the MVP has exactly one seeded scenario, always at `difficulty="standard"` (unchanged since Phase 5). The recommendation is honest, correct, and fully testable text describing what a rep *should* practice next — it does not (and, per this phase's strict boundaries, must not) fabricate a scenario library to route them to. Same honest scope gap `drills/generation.py`'s `practice_scenario_id` decision recorded in Phase 11 for an analogous reason. See DECISIONS.md, Phase 12.
+Origin: Phase 12. Owner: whichever future phase adds a scenario library.
+
 **P3 — Turn-submission endpoint returns the full conversation payload, including full message history, on every turn**
 Simpler frontend state model (see DECISIONS.md), but response payload size grows linearly with conversation length — irrelevant at MVP scale (max 12 turns) but worth a lighter-weight response shape if conversations ever get much longer.
 Origin: Phase 7. Owner: revisit only if a later phase's real usage shows this mattering.
@@ -84,6 +92,14 @@ Origin: Phase 10. Owner: Phase 14.
 **P3 — Drill does not automatically regenerate if coaching/readiness/evaluation ever changes after the fact**
 Same deliberate posture as readiness's and coaching's identical decisions, one layer further — see DECISIONS.md, Phase 11. Purely a behavioral-consistency choice here (drill generation is free; there's no LLM cost to avoid), not a cost-avoidance one.
 Origin: Phase 11. Owner: revisit only if a future phase adds re-computation anywhere upstream.
+
+**P3 — `READY_COMFORTABLE_MARGIN` (10 points) is a placeholder judgment call, not calibrated against real transcripts**
+Deliberately reuses `AT_RISK_MARGIN`'s exact value and reasoning as a separate, independently named constant (see DECISIONS.md, Phase 12) rather than an unrelated new guess — but is, like `AT_RISK_MARGIN` itself, not derived from real sales-conversation data, because none exists yet. Same owner and same open question as the `AT_RISK_MARGIN` item above: worth revisiting once Phase 15 (Stress Testing) or real usage shows whether either constant's value actually reads as intended to a human reviewer.
+Origin: Phase 12. Owner: Phase 15.
+
+**P3 — The difficulty recommendation is never persisted, so there is no historical record of what was recommended at a given point in time**
+Deliberate — per this phase's own explicit instruction not to create a table absent a genuine persistence requirement, `difficulty/service.py` always recomputes fresh from already-durable upstream data rather than snapshotting a result. This means if evaluation or readiness data were ever corrected retroactively (neither currently possible — both are immutable once persisted, see the two P3 items above), a difficulty recommendation shown to a rep earlier could not be distinguished from one computed after such a correction. Not a real gap today, since nothing upstream can currently change after the fact either. See DECISIONS.md, Phase 12.
+Origin: Phase 12. Owner: revisit only if a future phase both (a) allows evaluation/readiness re-computation and (b) needs recommendation history specifically.
 
 ## Resolved
 
