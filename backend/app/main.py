@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 from app.api.routes.coaching import router as coaching_router
 from app.api.routes.conversation import router as conversation_router
+from app.api.routes.drills import router as drills_router
 from app.api.routes.evaluation import router as evaluation_router
 from app.api.routes.health import router as health_router
 from app.api.routes.readiness import router as readiness_router
@@ -43,8 +44,9 @@ app.include_router(conversation_router)
 app.include_router(evaluation_router)
 app.include_router(readiness_router)
 app.include_router(coaching_router)
+app.include_router(drills_router)
 
 
 @app.get("/")
 def root() -> dict:
-    return {"message": f"{settings.app_name} API — Phase 10: AI Coach"}
+    return {"message": f"{settings.app_name} API — Phase 11: Targeted Drills"}

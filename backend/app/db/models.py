@@ -100,6 +100,7 @@ class Conversation(Base):
     evaluations: Mapped[list["Evaluation"]] = relationship(back_populates="conversation")
     readiness_result: Mapped["ReadinessResult"] = relationship(back_populates="conversation", uselist=False)
     coaching_session: Mapped["CoachingSession"] = relationship(back_populates="conversation", uselist=False)
+    drill: Mapped["Drill"] = relationship(back_populates="conversation", uselist=False)
 
 
 class Message(Base):
@@ -200,3 +201,39 @@ class CoachingSession(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     conversation: Mapped["Conversation"] = relationship(back_populates="coaching_session")
+
+
+class Drill(Base):
+    """Phase 11 — one per conversation (idempotent, same posture as
+    ReadinessResult/CoachingSession). A "targeted drill": a deterministic
+    reassembly of Phase 10's already-generated coaching (priority pick +
+    grounded points) and Phase 8's evaluation diagnosis/recommendation
+    for that one priority competency, into a focused practice assignment.
+
+    No new facts are ever introduced here — `app/drills/generation.py`
+    makes zero LLM calls (see DECISIONS.md, Phase 11); every field is
+    built entirely from already-verified upstream text.
+
+    `practice_scenario_id` points at the scenario to practice again —
+    in the MVP this is always the origin conversation's own scenario,
+    since no multi-scenario library exists yet (see DECISIONS.md,
+    Phase 11, for why this phase does not invent one). `focus_points` is
+    a JSON list (same established pattern as `CoachingSession.points`)
+    of the subset of that session's already-grounded coaching points
+    whose `competency_key` matches this drill's priority competency."""
+
+    __tablename__ = "drills"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    conversation_id: Mapped[str] = mapped_column(ForeignKey("conversations.id"), unique=True)
+    competency_id: Mapped[str] = mapped_column(ForeignKey("competencies.id"))
+    practice_scenario_id: Mapped[str] = mapped_column(ForeignKey("scenarios.id"))
+    title: Mapped[str] = mapped_column(String(255))
+    focus_reason: Mapped[str] = mapped_column(Text)
+    instructions: Mapped[str] = mapped_column(Text)
+    focus_points: Mapped[list] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    conversation: Mapped["Conversation"] = relationship(back_populates="drill")
+    competency: Mapped["Competency"] = relationship()
+    practice_scenario: Mapped["Scenario"] = relationship()
