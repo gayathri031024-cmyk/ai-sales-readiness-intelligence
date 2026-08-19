@@ -124,3 +124,13 @@ Phase 0 named four Milestone-1 assumptions (buyer state persistence/no-leakage, 
 ### Next (deferred past Phase 10, by design)
 
 Real-model evaluation against `AnthropicProvider` for coaching generation, same test scenarios above, once a key is added at final integration — unchanged deferral reasoning from every prior phase.
+
+## Phase 11 addendum — targeted drills make no LLM calls at all, same as readiness
+
+Nothing to evaluate here in the AI-behavior sense, and unlike Phase 9 this isn't even a design choice worth much elaboration: `drills/generation.py` is pure Python — a title string, a filter over an already-persisted list, and string concatenation of already-verified text. It has no code path to an LLM provider at all (test-enforced directly: `test_generate_drill_never_calls_anything_ai_related` asserts the function's own signature contains no provider parameter, and `test_drill_generation_makes_zero_llm_calls` asserts `mock_provider.calls` is unchanged before and after both drill endpoints).
+
+The one thing worth recording is what this phase *doesn't* need to evaluate that a naive design might have: because drill instructions are reassembled entirely from Phase 8's evaluation diagnosis/recommendation and Phase 10's already-grounded coaching points, there was no new hallucination surface to test against, no new "does the model cite real evidence" question, and no new degradation path to design. This is the direct payoff of Phase 10's `coaching/verification.py` having already done that grounding work once — Phase 11 gets to inherit the guarantee for free rather than re-earning it. Worth naming as a pattern: the deeper a phase sits in this pipeline (evaluation → readiness → coaching → drills), the more of its correctness is inherited from verification work an earlier phase already did, rather than needing fresh AI-reliability engineering of its own.
+
+### Next (deferred past Phase 11, by design)
+
+Nothing — this phase has no LLM component to eventually validate against a real model. The next addendum requiring one will be whichever future phase adds the reassessment mechanism (see KNOWN_ISSUES.md), if that phase turns out to need any LLM-assisted comparison logic rather than a purely deterministic score-delta check.

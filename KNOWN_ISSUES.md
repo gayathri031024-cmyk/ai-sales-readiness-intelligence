@@ -25,6 +25,18 @@ Origin: Phase 9. Owner: you, before `CHECKPOINT PASSED`.
 `POST`/`GET /conversations/{id}/coaching` are complete, tested (23 tests), and live-smoke-tested against a real running server, but nothing in `frontend/src` references coaching — no type, no adapter, no UI. Unlike Phase 9 (where the existing mock types already matched the real API shape with zero changes needed), a coaching UI would be genuinely new screen real estate with no existing mock/design to slot into, and no control document specifies what it should look like. Building one now would mean guessing at unspecified UI/UX scope — explicitly against this phase's rule 10 ("do not guess or fabricate requirements"). See DECISIONS.md, Phase 10.
 Origin: Phase 10. Owner: you — either specify the coaching UI design for a follow-up commit, or explicitly defer it to a later phase.
 
+**P2 — Drills have no frontend at all yet — API-only, same reasoning as coaching**
+`POST`/`GET /conversations/{id}/drill` are complete, tested (16 tests), and live-smoke-tested against a real running server. A drill card would sit downstream of a coaching card that doesn't exist in the frontend yet — building drill UI first would mean building on top of nothing. See DECISIONS.md, Phase 11.
+Origin: Phase 11. Owner: you — same call as the coaching item above, ideally decided together since they're the same unbuilt UI chain.
+
+**P2 — The training loop's "reassessment" step is not implemented — "drill → practice → reassessment → competency achieved" stops after "drill" this phase**
+`DATA_MODEL.md` lists `drills` and `reassessments` as two separate deferred tables. Phase 11 built the first; the second — linking a fresh practice conversation back to the specific drill it was practicing, then automatically comparing before/after evaluation scores to confirm the weakness was fixed — has zero column-level specification anywhere beyond the bare table name, and was not guessed at (rule 9 of this phase: do not guess missing requirements). A rep can already start a fresh practice conversation today using the drill's `practice_scenario_id` via the existing `POST /conversations` flow — what's missing is the system automatically recognizing that conversation *as* a reassessment of a specific drill. See DECISIONS.md, Phase 11.
+Origin: Phase 11. Owner: a dedicated future phase — not the same concept as Phase 12 (Adaptive Difficulty), which is about difficulty scaling, not the reassessment link-back mechanism.
+
+**P2 — "Targeted" drills currently target only the competency to focus on, not a distinct practice scenario**
+The MVP has exactly one seeded scenario — there is no scenario library or authoring capability for a drill to select a *different* scenario from. `Drill.practice_scenario_id` is always identical to the origin conversation's own `scenario_id`; it exists now so a future multi-scenario phase can start varying it without a schema change, but currently carries no new information. See DECISIONS.md, Phase 11, for the full reasoning.
+Origin: Phase 11. Owner: whichever future phase adds a scenario library.
+
 **P3 — Turn-submission endpoint returns the full conversation payload, including full message history, on every turn**
 Simpler frontend state model (see DECISIONS.md), but response payload size grows linearly with conversation length — irrelevant at MVP scale (max 12 turns) but worth a lighter-weight response shape if conversations ever get much longer.
 Origin: Phase 7. Owner: revisit only if a later phase's real usage shows this mattering.
@@ -68,6 +80,10 @@ Origin: Phase 10. Owner: revisit only if a future phase adds evaluation/readines
 **P3 — Coaching's priority pick carries no cross-competency causal reasoning (e.g., "weak closing traced back to weak discovery")**
 MASTER_PROMPT.md's COMPETENCY/SKILL GRAPH section gestures at this kind of root-cause claim, but explicitly requires it never be made "without evidence" — and no such cross-competency evidence exists without `skill_graph_edges` (Phase 14, not yet built; ARCHITECTURE.md explicitly deferred "full skill graph with dependency modeling" past Milestone 1/2). Phase 10's priority pick and its stated reason are both single-competency facts (that competency's own gap or margin) — correct and evidence-backed, but narrower than what a full root-cause engine would eventually provide.
 Origin: Phase 10. Owner: Phase 14.
+
+**P3 — Drill does not automatically regenerate if coaching/readiness/evaluation ever changes after the fact**
+Same deliberate posture as readiness's and coaching's identical decisions, one layer further — see DECISIONS.md, Phase 11. Purely a behavioral-consistency choice here (drill generation is free; there's no LLM cost to avoid), not a cost-avoidance one.
+Origin: Phase 11. Owner: revisit only if a future phase adds re-computation anywhere upstream.
 
 ## Resolved
 

@@ -196,3 +196,29 @@ Run with: `cd backend && python -m pytest -v` — **167 passed** (144 Phase 0–
 |---|---|
 | All Phase 0–9 backend tests (144) | ✅ still pass, unchanged, now part of the 167 |
 | Frontend build | ✅ still builds clean — no frontend files touched this phase (see KNOWN_ISSUES.md) |
+
+## Backend (Phase 11 additions)
+
+| Test file | Covers | Status | Phase |
+|---|---|---|---|
+| `test_drills.py` (16 tests) | `generate_drill` at the unit level (no DB/HTTP/LLM): title/instructions built deterministically from already-verified upstream text, coaching points correctly filtered to only the priority competency (points from other competencies excluded from both the returned list and the assembled instruction text), a living assertion that the function signature contains no provider/LLM parameter at all; full API-level pipeline (drill's competency matches coaching's priority pick end to end, `practice_scenario_id` matches the origin conversation's own scenario, focus points come from real persisted coaching points filtered correctly); zero-LLM guarantee (`mock_provider.calls` count unchanged before/after both drill endpoints); precondition/error handling (`POST .../drill` before coaching → 409, unknown conversation → 404 on both endpoints, `GET .../drill` 404 before generated); idempotency (repeat `POST .../drill` returns identical data, exactly one `drills` row); hidden-state/system-prompt protection; public API schema shape | PASS | 11 |
+
+Run with: `cd backend && python -m pytest -v` — **183 passed** (167 Phase 0–10 + 16 Phase 11, verified fresh with `dev.db` removed and all LLM-related env vars unset — zero network calls, zero API cost; this phase makes zero LLM calls even when a key IS configured, so this baseline is not merely a degraded-mode result).
+
+## Manual Verification (Phase 11)
+
+| Check | Result |
+|---|---|
+| Full suite passes with zero LLM-related env vars set | ✅ 183 passed |
+| No unexplained pre-existing files found at the start of this phase (unlike Phase 9/10) | ✅ confirmed via `git status --porcelain --ignored=matching` before any work began — clean baseline, no discrepancy to investigate this time |
+| `alembic upgrade head` against a fresh SQLite DB | ✅ all three migrations apply in order (`9f7e1a8e08c5` → `c054f45455ae` → `7b1f3c9d2a6e`); all 13 tables present, `drills` schema matches the ORM model column-by-column (verified via `PRAGMA table_info`) |
+| Backend boots via `uvicorn` and serves real HTTP traffic | ✅ `curl /health` → ok; full manual sequence (create → close → drill-before-coaching → 409 → evaluate → readiness → coaching → drill → correct competency/instructions with no `LLM_API_KEY` set → GET returns identical data → 404 for unknown conversation) all confirmed correct against a real running server |
+| `npm run build` (frontend, untouched this phase — regression check only) | ✅ 0 type errors |
+| No `.env` tracked in git; no accidental artifacts (`dev.db`, `__pycache__`, `.pytest_cache`) committed | ✅ confirmed via `git status --ignored` |
+
+## Regression Suite (Phase 11)
+
+| Check | Result |
+|---|---|
+| All Phase 0–10 backend tests (167) | ✅ still pass, unchanged, now part of the 183 |
+| Frontend build | ✅ still builds clean — no frontend files touched this phase (see KNOWN_ISSUES.md) |
