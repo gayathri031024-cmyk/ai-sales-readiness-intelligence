@@ -73,6 +73,30 @@ Origin: Phase 8. Owner: Phase 15/18.
 `conversation.service.get_or_create_default_user` attributes every conversation to the same synthetic user regardless of who is actually using it. Intentional and explicitly deferred per ARCHITECTURE.md §8 (multi-user auth is Milestone 3 scope); the `user_id` FK already exists specifically so this doesn't require a schema change later.
 Origin: Phase 7. Owner: Milestone 3 / whichever phase adds real auth.
 
+**P2 — `HashingEmbeddingProvider` (the default, and the only embedding provider exercised by any automated test) is lexical, not semantic**
+It is a deterministic bag-of-words feature-hashing vectorizer with no notion of synonyms or stemming — "refund" and "refunds" hash to different buckets and are treated as unrelated for retrieval purposes (observed directly while writing `test_knowledge.py`; see AI_EVALUATION.md, Phase 13). Retrieval against it behaves closer to keyword search than true semantic similarity search. This is a deliberate MVP default (see DECISIONS.md, Phase 13), not an oversight, but real product usage with naturally-phrased queries would likely see meaningfully worse retrieval recall than a real embedding model would provide.
+Origin: Phase 13. Owner: switch production to `EMBEDDING_PROVIDER=sentence_transformer` once network access allows exercising it (see next item).
+
+**P3 — `SentenceTransformerEmbeddingProvider` has never been exercised or tested in this environment**
+Structurally implemented (lazy model loading, `EmbeddingUnavailableError` on missing dependency, same laziness posture as `AnthropicProvider`) but no automated test constructs it and no live smoke test ran with it configured — this environment's network configuration does not permit downloading model weights from a model hub. Its correctness rests entirely on the `sentence-transformers` library's own contract, not on anything this phase verified. Same posture `AnthropicProvider` has held since Phase 6.
+Origin: Phase 13. Owner: final integration / whichever environment has the network access to download model weights.
+
+**P3 — Retrieval is pure-Python in-process cosine similarity, O(n) per query over every persisted chunk — no vector index, no pgvector**
+Deliberate MVP-scale choice (see DECISIONS.md, Phase 13) — fine for a handful of short product documents, would not scale to a large multi-tenant document corpus. pgvector is the documented target for Phase 21 (Deployment); `KnowledgeChunk.embedding`'s plain-JSON-array shape does not block that migration.
+Origin: Phase 13. Owner: Phase 21.
+
+**P3 — Grounding verification only confirms a cited chunk id was actually retrieved — it cannot confirm the model's prose faithfully represents that chunk's content**
+`verify_grounded_answer` catches a fabricated citation (a chunk id the model invented) but has no mechanism to catch a real citation whose surrounding prose subtly misrepresents what that chunk actually says — a genuinely subtler hallucination than a fabricated id. Catching that would need either a real-model evaluation harness (Phase 18) or a second grounding-verification LLM call, neither built here.
+Origin: Phase 13. Owner: Phase 18 (AI Evaluation Benchmark).
+
+**P2 — The knowledge base is a single global corpus with no per-org/per-tenant scoping**
+`KnowledgeDocument`/`KnowledgeChunk` have no foreign key to any org/tenant concept — every ingested document is retrievable for every query. Correct for a single-tenant MVP demo (see DECISIONS.md, Phase 13) but would leak one customer's product documents into another's queries under real multi-tenant usage.
+Origin: Phase 13. Owner: Phase 19 (Security), alongside the rest of that phase's tenant-isolation work.
+
+**P2 — Product RAG has no frontend at all yet — API-only, same reasoning as coaching/drills/difficulty**
+`POST`/`GET /knowledge/documents` and `POST /knowledge/query` are complete, tested (27 tests), and live-smoke-tested against a real running server, but nothing in `frontend/src` references any of it — no type, no adapter, no UI. No control document specifies a document-upload or knowledge-query UI.
+Origin: Phase 13. Owner: you — same call as the coaching/drills/difficulty items above.
+
 **P3 — `AT_RISK_MARGIN` (10 points) is a placeholder judgment call, not calibrated against real transcripts**
 Same category as `scenario/service.py`'s own MVP threshold values (60/70/65) — a reasonable, explicit, documented default (see DECISIONS.md, Phase 9) rather than a value derived from real sales-conversation data, because none exists yet. Worth revisiting once Phase 15 (Stress Testing) or real usage shows whether a 10-point gap actually reads as "borderline" to a human reviewer.
 Origin: Phase 9. Owner: Phase 15.

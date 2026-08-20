@@ -248,3 +248,29 @@ Run with: `cd backend && python -m pytest -v` — **214 passed** (183 Phase 0–
 |---|---|
 | All Phase 0–11 backend tests (183) | ✅ still pass, unchanged, now part of the 214 |
 | Frontend build | ✅ still builds clean — no frontend files touched this phase (see KNOWN_ISSUES.md) |
+
+## Backend (Phase 13 additions)
+
+| Test file | Covers | Status | Phase |
+|---|---|---|---|
+| `test_knowledge.py` (27 tests) | Deterministic chunking (`chunk_text`): repeated-call determinism, whole-document coverage with overlap and contiguous chunk indices, empty/whitespace-only input returns no chunks, invalid overlap/chunk_size raise `ValueError`; pure retrieval (`cosine_similarity`, `retrieve_top_k`): identical vectors → similarity 1.0, orthogonal vectors → 0.0, mismatched-length vectors raise `ValueError`, ranking is similarity-descending, results below `min_similarity` are dropped, `top_k` limit respected; citation-verification backstop at the unit level (`verify_grounded_answer`): accepts a real cited chunk, rejects a fabricated chunk id (forced to the fixed not-found answer), respects the model's own `grounded: false` claim, keeps only real ids when citations are a mix of real and fabricated; full API-level pipeline: ingest persists document + chunks, whitespace-only content rejected (422), ingest response schema never exposes raw embeddings/internal fields, list/get documents, 404 for unknown document id; query behavior: zero relevant documents retrieved → not-found answer with **zero LLM calls made** (`mock_llm.calls == []`), a grounded query with a real citation returns that citation with correct document title, a fabricated citation is dropped end-to-end (not-grounded, empty citations), graceful degradation to a fixed "temporarily unavailable" response when the LLM is unavailable; a structural prompt-injection test asserting an embedded injection attempt never appears in the recorded system-prompt call and only appears in the user-prompt CONTEXT block; a conflicting-documents test confirming both sources' citations survive together rather than one being silently dropped | PASS | 13 |
+
+Run with: `cd backend && python -m pytest -v` — **241 passed** (214 Phase 0–12 + 27 Phase 13, verified fresh with `dev.db` removed and all LLM-related env vars unset — zero network calls, zero API cost).
+
+## Manual Verification (Phase 13)
+
+| Check | Result |
+|---|---|
+| Full suite passes with zero LLM-related env vars set | ✅ 241 passed |
+| No unexplained pre-existing Phase 13 files found at the start of this phase | ✅ confirmed via `git status` and a targeted search for `rag`/`phase 13`/`knowledge` code — the only hits were the pre-existing "Explicitly Deferred" comments in `models.py`/`DATA_MODEL.md`/`ARCHITECTURE.md`, not implementation |
+| `alembic upgrade head` against a fresh SQLite DB | ✅ all four migrations apply in order; 15 schema tables present (16 including `alembic_version`) — `knowledge_documents` and `knowledge_chunks` added by migration `ed1e90345d8b` |
+| Backend boots via `uvicorn` and serves real HTTP traffic | ✅ ingest a document containing an embedded prompt-injection attempt → list → query (no `LLM_API_KEY` set) → correctly degrades to `"The knowledge assistant is temporarily unavailable"` / `grounded: false` → a second query with no matching content at all correctly returns the distinct not-found answer (`"I don't have grounded information..."`) with no LLM involvement either way → 404 for an unknown document → all three route groups confirmed present in the live OpenAPI schema → existing `/scenarios` endpoint re-checked for hidden `base_state` leakage as a regression check (still absent) |
+| `npm run build` (frontend, untouched this phase — regression check only) | ✅ 0 type errors |
+| No `.env`, no real secrets, no `dev.db`, no `node_modules`, no `dist`, no `__pycache__`, no `.pytest_cache` tracked | ✅ confirmed via `git status --ignored` (all correctly gitignored, none staged) and a targeted `git ls-files` grep for those patterns (none found) plus a secret-pattern grep across `app`/`tests` (none found) |
+
+## Regression Suite (Phase 13)
+
+| Check | Result |
+|---|---|
+| All Phase 0–12 backend tests (214) | ✅ still pass, unchanged, now part of the 241 |
+| Frontend build | ✅ still builds clean — no frontend files touched this phase (see KNOWN_ISSUES.md) |
