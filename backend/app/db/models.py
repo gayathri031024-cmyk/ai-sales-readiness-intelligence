@@ -1,9 +1,12 @@
 """
 ORM models — mirrors DATA_MODEL.md exactly. MVP scope only.
 
-Deliberately absent: organizations, products catalog, knowledge_documents
-(RAG), coaching_sessions, drills, reassessments, skill_graph_edges,
-manager_rollups. See DATA_MODEL.md §3 "Explicitly Deferred".
+Deliberately absent: organizations, products catalog, reassessments,
+skill_graph_edges, manager_rollups. See DATA_MODEL.md §3 "Explicitly
+Deferred". (coaching_sessions, drills, and knowledge_documents/
+knowledge_chunks were built in Phases 10, 11, and 13 respectively —
+this comment previously listed them as absent after they'd already
+shipped; corrected here.)
 """
 import uuid
 from datetime import datetime, timezone
@@ -237,3 +240,45 @@ class Drill(Base):
     conversation: Mapped["Conversation"] = relationship(back_populates="drill")
     competency: Mapped["Competency"] = relationship()
     practice_scenario: Mapped["Scenario"] = relationship()
+
+
+class KnowledgeDocument(Base):
+    """Phase 13 — one uploaded product/company knowledge source
+    (playbook, FAQ, battle card, pricing sheet, spec doc — see
+    MASTER_PROMPT.md "RAG / PRODUCT KNOWLEDGE"). `content` keeps the
+    full original text so chunking can be re-run deterministically if
+    the chunking strategy ever changes, without re-uploading."""
+
+    __tablename__ = "knowledge_documents"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    title: Mapped[str] = mapped_column(String(255))
+    content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    chunks: Mapped[list["KnowledgeChunk"]] = relationship(
+        back_populates="document",
+        cascade="all, delete-orphan",
+        order_by="KnowledgeChunk.chunk_index",
+    )
+
+
+class KnowledgeChunk(Base):
+    """One deterministically-chunked span of a KnowledgeDocument, plus
+    its embedding vector. `embedding` is a plain JSON float array, not
+    a pgvector column — per DECISIONS.md (Phase 13), similarity search
+    runs in-process (pure Python cosine similarity, see
+    app/knowledge/retrieval.py) at MVP scale; pgvector is deferred to
+    Phase 21 deployment when a real Postgres target and larger corpus
+    justify it (see ARCHITECTURE.md §10, DATA_MODEL.md §3)."""
+
+    __tablename__ = "knowledge_chunks"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    document_id: Mapped[str] = mapped_column(ForeignKey("knowledge_documents.id"))
+    chunk_index: Mapped[int] = mapped_column(Integer)
+    text: Mapped[str] = mapped_column(Text)
+    embedding: Mapped[list] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    document: Mapped["KnowledgeDocument"] = relationship(back_populates="chunks")

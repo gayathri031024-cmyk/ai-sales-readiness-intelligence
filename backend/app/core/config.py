@@ -27,6 +27,14 @@ class Settings(BaseSettings):
     llm_api_key: str | None = None
     llm_model: str = "not-configured"
 
+    # Phase 13 — embedding provider for Product RAG. "hashing" is the
+    # zero-dependency, zero-network deterministic default (see
+    # app/ai/embedding_provider.py); set to "sentence_transformer" to
+    # use a real local open-source embedding model instead. Never an
+    # external embedding API, per DECISIONS.md (Phase 13).
+    embedding_provider: str = "hashing"
+    embedding_model: str = "all-MiniLM-L6-v2"
+
 
 @lru_cache
 def get_settings() -> Settings:

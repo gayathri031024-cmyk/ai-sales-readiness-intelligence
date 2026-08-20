@@ -8,6 +8,7 @@ from app.api.routes.difficulty import router as difficulty_router
 from app.api.routes.drills import router as drills_router
 from app.api.routes.evaluation import router as evaluation_router
 from app.api.routes.health import router as health_router
+from app.api.routes.knowledge import router as knowledge_router
 from app.api.routes.readiness import router as readiness_router
 from app.api.routes.scenario import router as scenario_router
 from app.core.config import get_settings
@@ -47,8 +48,9 @@ app.include_router(readiness_router)
 app.include_router(coaching_router)
 app.include_router(drills_router)
 app.include_router(difficulty_router)
+app.include_router(knowledge_router)
 
 
 @app.get("/")
 def root() -> dict:
-    return {"message": f"{settings.app_name} API — Phase 12: Adaptive Difficulty"}
+    return {"message": f"{settings.app_name} API — Phase 13: Product RAG"}
