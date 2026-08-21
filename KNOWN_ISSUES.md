@@ -125,6 +125,22 @@ Origin: Phase 12. Owner: Phase 15.
 Deliberate — per this phase's own explicit instruction not to create a table absent a genuine persistence requirement, `difficulty/service.py` always recomputes fresh from already-durable upstream data rather than snapshotting a result. This means if evaluation or readiness data were ever corrected retroactively (neither currently possible — both are immutable once persisted, see the two P3 items above), a difficulty recommendation shown to a rep earlier could not be distinguished from one computed after such a correction. Not a real gap today, since nothing upstream can currently change after the fact either. See DECISIONS.md, Phase 12.
 Origin: Phase 12. Owner: revisit only if a future phase both (a) allows evaluation/readiness re-computation and (b) needs recommendation history specifically.
 
+**P2 — Phase 14's "Skill Graph" is a within-conversation competency dependency graph, not the longitudinal cross-conversation Sales DNA profile the product vision describes**
+`app/skill_graph/` correlates weaknesses observed together *inside a single conversation* — it has no notion of trend across multiple conversations, no persisted historical observation, no confidence-from-evidence-volume, no behavioral-pattern tracking. A later prompt in the same working session described that longitudinal profile under the same "Phase 14" name; this was surfaced as an explicit scope conflict rather than silently built or silently ignored, and you chose to keep the dependency-graph work as Phase 14 and defer the longitudinal profile as new, separately-scoped future work. See DECISIONS.md, Phase 14.
+Origin: Phase 14. Owner: Phase 14b/15 (longitudinal Sales DNA profile), not yet started.
+
+**P2 — Root-cause analysis only covers the 3 MVP-seeded competencies — the full 7-competency graph MASTER_PROMPT.md names is not built**
+Pain Identification, Product Knowledge, Value Articulation, and Negotiation have no `Competency` row, no threshold, and no evaluation data anywhere in the MVP — building graph edges to or from them would be inventing requirements no scenario actually exercises. See DECISIONS.md, Phase 14.
+Origin: Phase 14. Owner: whichever future phase expands the scenario library / seeds the remaining 4 competencies.
+
+**P3 — The 3-edge skill graph (which competency depends on which) is a documented judgment call, not calibrated against real transcript data**
+Same placeholder posture as `AT_RISK_MARGIN`/`READY_COMFORTABLE_MARGIN` — directly matches MASTER_PROMPT.md's own worked example (weak closing traced to weak discovery), but the specific edges chosen (Closing→Discovery, Closing→Objection Handling, Objection Handling→Discovery) are an authored starting point, not derived from evidence that these particular dependencies actually predict correlated weakness in practice.
+Origin: Phase 14. Owner: revisit once real transcript data across many conversations exists.
+
+**P3 — Root-cause correlation is a single-conversation signal only — it says nothing about whether the same pattern recurs across a rep's history**
+Because Phase 14 deliberately does not persist or aggregate across conversations (see the P2 item above), a "closing correlated with discovery" result reflects only the one conversation being analyzed. A rep who had one bad day would show the same correlation as a rep with a consistent pattern — there is currently no way to distinguish the two. This is exactly the gap the deferred longitudinal profile would close.
+Origin: Phase 14. Owner: Phase 14b/15.
+
 ## Resolved
 
 **P2 — `Result` screen renders Phase 4 mock data instead of real evaluation + readiness data** *(resolved Phase 9)*

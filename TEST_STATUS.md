@@ -274,3 +274,28 @@ Run with: `cd backend && python -m pytest -v` — **241 passed** (214 Phase 0–
 |---|---|
 | All Phase 0–12 backend tests (214) | ✅ still pass, unchanged, now part of the 241 |
 | Frontend build | ✅ still builds clean — no frontend files touched this phase (see KNOWN_ISSUES.md) |
+
+## Backend (Phase 14 additions)
+
+| Test file | Covers | Status | Phase |
+|---|---|---|---|
+| `test_skill_graph.py` (18 tests) | Pure unit tests for `find_related_weaknesses` (no DB/HTTP/LLM): no failing competencies returns empty, a failing competency with no outgoing edges is absent, a failing competency whose upstream dependencies all passed is absent, a failing competency with a failing upstream is included with hedged reason text quoting the real diagnosis (and never uses causal language like "caused by"/"is the root cause"), multiple failing upstream dependencies are all included, a multi-level chain (objection_handling itself depends on discovery) is correctly resolved, a missing diagnosis for the upstream competency excludes it as a candidate, an edge referencing a competency key absent from the current results does not crash; seed idempotency (`seed_mvp_skill_graph` called twice yields exactly 3 edges, no duplicates) and a check that every seeded edge references a real, existing `Competency` row; full API-level tests for `GET /conversations/{id}/root-cause-analysis`: 409 before evaluation exists, 404 for an unknown conversation, correct single-level root-cause surfacing (closing correlated with discovery when both fail and objection_handling passes), a failing competency with no failing upstream correctly omitted from the response entirely, correct multi-level surfacing when all three MVP competencies fail, a zero-LLM-call guarantee (`mock_provider.calls` count unchanged before/after the request), identical output across two repeated calls with no upstream change, and a check that the response never includes hidden buyer-state fields (`current_buyer_state`, `trust`, `patience`, `budget_sensitivity`) | PASS | 14 |
+
+Run with: `cd backend && python -m pytest -v` — **259 passed** (241 Phase 0–13 + 18 Phase 14, verified fresh with `dev.db` removed and all LLM-related env vars unset — zero network calls, zero API cost; this module in particular makes literally zero LLM calls regardless of key configuration, since `find_related_weaknesses`/`compute_root_cause_analysis` take no provider parameter at all).
+
+## Manual Verification (Phase 14)
+
+| Check | Result |
+|---|---|
+| Full suite passes with zero LLM-related env vars set | ✅ 259 passed |
+| `alembic upgrade head` against a fresh SQLite DB | ✅ all five migrations apply in order; 16 schema tables present (17 including `alembic_version`) — `skill_graph_edges` added by migration `0e7ff0f54546` |
+| Backend boots via `uvicorn` and serves real HTTP traffic | ✅ create a conversation → `GET .../root-cause-analysis` before evaluation correctly returns 409 → unknown conversation id correctly returns 404 → route confirmed present in the live OpenAPI schema → existing `/scenarios` endpoint re-checked for hidden `current_buyer_state` leakage as a regression check (still absent) |
+| `npm run build` (frontend, untouched this phase — regression check only) | ✅ 0 type errors |
+| No `.env`, no real secrets, no `dev.db`, no `node_modules`, no `dist`, no `__pycache__`, no `.pytest_cache` tracked | ✅ confirmed via `git status --ignored` (all correctly gitignored, none staged) and a targeted `git ls-files` grep plus a secret-pattern grep across `app`/`tests` (none found) |
+
+## Regression Suite (Phase 14)
+
+| Check | Result |
+|---|---|
+| All Phase 0–13 backend tests (241) | ✅ still pass, unchanged, now part of the 259 |
+| Frontend build | ✅ still builds clean — no frontend files touched this phase (see KNOWN_ISSUES.md) |
