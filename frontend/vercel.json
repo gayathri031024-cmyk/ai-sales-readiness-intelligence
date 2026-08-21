@@ -1,0 +1,8 @@
+{
+    "rewrites": [
+      {
+        "source": "/api/:path*",
+        "destination": "https://ai-sales-readiness-intelligence.onrender.com/:path*"
+      }
+    ]
+  }
