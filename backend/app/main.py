@@ -11,10 +11,12 @@ from app.api.routes.health import router as health_router
 from app.api.routes.knowledge import router as knowledge_router
 from app.api.routes.readiness import router as readiness_router
 from app.api.routes.scenario import router as scenario_router
+from app.api.routes.skill_graph import router as skill_graph_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.db.base import Base, SessionLocal, engine
 from app.scenario.service import seed_mvp_scenario
+from app.skill_graph.seed import seed_mvp_skill_graph
 
 configure_logging()
 settings = get_settings()
@@ -27,12 +29,16 @@ async def lifespan(_: FastAPI):
     # MVP scenario seed data currently rides along with this same
     # dev-only guard (see KNOWN_ISSUES.md) rather than a proper seed
     # migration — appropriate for a single hardcoded MVP scenario, not
-    # appropriate once real scenario authoring exists.
+    # appropriate once real scenario authoring exists. The MVP skill
+    # graph (Phase 14) rides the same guard for the same reason, and
+    # must seed AFTER the scenario/competencies, since it references
+    # already-seeded Competency rows.
     if settings.environment == "development":
         Base.metadata.create_all(bind=engine)
         db = SessionLocal()
         try:
             seed_mvp_scenario(db)
+            seed_mvp_skill_graph(db)
         finally:
             db.close()
     yield
@@ -49,8 +55,9 @@ app.include_router(coaching_router)
 app.include_router(drills_router)
 app.include_router(difficulty_router)
 app.include_router(knowledge_router)
+app.include_router(skill_graph_router)
 
 
 @app.get("/")
 def root() -> dict:
-    return {"message": f"{settings.app_name} API — Phase 13: Product RAG"}
+    return {"message": f"{settings.app_name} API — Phase 14: Skill Graph"}

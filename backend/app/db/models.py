@@ -2,10 +2,10 @@
 ORM models — mirrors DATA_MODEL.md exactly. MVP scope only.
 
 Deliberately absent: organizations, products catalog, reassessments,
-skill_graph_edges, manager_rollups. See DATA_MODEL.md §3 "Explicitly
-Deferred". (coaching_sessions, drills, and knowledge_documents/
-knowledge_chunks were built in Phases 10, 11, and 13 respectively —
-this comment previously listed them as absent after they'd already
+manager_rollups. See DATA_MODEL.md §3 "Explicitly Deferred".
+(coaching_sessions, drills, knowledge_documents/knowledge_chunks, and
+skill_graph_edges were built in Phases 10, 11, 13, and 14 respectively
+— this comment previously listed them as absent after they'd already
 shipped; corrected here.)
 """
 import uuid
@@ -282,3 +282,30 @@ class KnowledgeChunk(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     document: Mapped["KnowledgeDocument"] = relationship(back_populates="chunks")
+
+
+class SkillGraphEdge(Base):
+    """Phase 14 — a directed "depends_on" relationship between two
+    competencies (e.g., Closing depends_on Discovery), used by
+    `app/skill_graph/analysis.py` to propose evidence-hedged, never-
+    proven-causal correlations between weaknesses in the same
+    conversation (MASTER_PROMPT.md's "weak closing traced back to weak
+    discovery" example). A small, static, hand-authored reference
+    table — same posture as `Competency`/`ScenarioCompetencyThreshold`
+    — seeded once via `app/skill_graph/seed.py::seed_mvp_skill_graph`,
+    not user-editable in this MVP. Scoped only to the 3 competencies
+    this MVP actually seeds (discovery, objection_handling, closing) —
+    see DECISIONS.md, Phase 14, for why the full 7-competency graph
+    named in MASTER_PROMPT.md is not built here."""
+
+    __tablename__ = "skill_graph_edges"
+    __table_args__ = (UniqueConstraint("from_competency_id", "to_competency_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    from_competency_id: Mapped[str] = mapped_column(ForeignKey("competencies.id"))
+    to_competency_id: Mapped[str] = mapped_column(ForeignKey("competencies.id"))
+    relationship_type: Mapped[str] = mapped_column(String(50))  # "depends_on" — the only value used in the MVP
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    from_competency: Mapped["Competency"] = relationship(foreign_keys=[from_competency_id])
+    to_competency: Mapped["Competency"] = relationship(foreign_keys=[to_competency_id])
