@@ -12,3 +12,4 @@ httpx==0.27.2
 # Phase 6 — Adaptive AI Buyer
 anthropic==0.39.0
 langgraph==0.2.39
+google-generativeai==0.8.3  # optional free-tier fallback provider (LLM_PROVIDER=gemini)

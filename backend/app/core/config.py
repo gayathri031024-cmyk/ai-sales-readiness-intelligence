@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./dev.db"
 
     # Populated in later phases (Phase 6+) once the AI layer is built.
+    # llm_provider selects which real LLMProvider factory.py builds:
+    # "anthropic" (default, paid) or "gemini" (Google's free-tier Flash
+    # models — no card required, see app/ai/provider.py::GeminiProvider).
+    llm_provider: str = "anthropic"
     llm_api_key: str | None = None
     llm_model: str = "not-configured"
 
