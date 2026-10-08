@@ -1,32 +1,41 @@
-## Live Demo
+AI Sales Readiness Intelligence
 
-[**Try AI Sales Readiness Intelligence →**](https://ai-sales-readiness-intelligence.vercel.app/)
+AI-powered sales simulation, competency evaluation, and readiness coaching platform.
 
-# AI Sales Readiness Intelligence
+AI Sales Readiness Intelligence simulates realistic sales conversations with an adaptive AI buyer, evaluates representative behavior using conversation evidence, and produces explainable readiness decisions through a deterministic evaluation and rules engine.
 
-**Evidence-based AI sales simulation and readiness evaluation platform.**
+Instead of relying on an opaque LLM-generated score, the platform separates AI-based interpretation from deterministic business logic, making evaluation more explainable, testable, and auditable.
 
-Simulates realistic sales conversations with an adaptive AI buyer, evaluates representative behavior using cited evidence, and determines readiness through a **deterministic evaluation and rules engine** rather than relying on an opaque LLM score.
+Live Demo: Try AI Sales Readiness Intelligence
 
-**Live Demo:** https://ai-sales-readiness-intelligence.vercel.app/
-
-**Stack:** React · TypeScript · FastAPI · PostgreSQL · LangGraph · Anthropic Claude · Alembic
+Tech Stack: React · TypeScript · FastAPI · PostgreSQL · LangGraph · Anthropic Claude · Alembic
 
 ---
 
-## Screenshots
+What This Project Demonstrates
 
-Add 2–4 screenshots from `docs/screenshots/` here.
+Full-stack application development with React and FastAPI
+REST API design and backend architecture
+PostgreSQL database design and migrations
+LLM integration using Anthropic Claude
+LangGraph-based AI workflow orchestration
+Evidence-based AI evaluation
+Deterministic business rules and decision logic
+Retrieval-Augmented Generation (RAG)
+Citation verification and grounded responses
+Competency dependency analysis
+Automated backend testing
+GitHub Actions CI
+Production deployment
 
 ---
 
-## Why I Built This
+Product Overview
 
-Most AI sales-training systems can generate a conversation or produce a score, but a score alone does not explain **why** someone is or isn't ready.
+Sales training platforms can generate conversations and scores, but a score alone does not explain why a representative is ready or where they need improvement.
 
-This project focuses on an evidence-based evaluation pipeline:
+This project addresses that problem by combining AI interpretation with deterministic evaluation logic.
 
-```text
 Scenario
    ↓
 Adaptive AI Buyer
@@ -41,201 +50,263 @@ Deterministic Readiness Engine
    ↓
 Readiness Decision
    ↓
-Coaching / Targeted Practice
-```
+Coaching & Targeted Practice
+Core Design Principle
 
-The key design principle is that the LLM can help interpret the conversation, but the final readiness decision is produced by deterministic business logic operating on evaluated evidence.
+The LLM does not directly determine sales readiness.
 
----
+The LLM is used for tasks such as conversation understanding, evidence interpretation, and generating coaching content.
 
-## Key Features
+The final readiness decision is produced by deterministic business rules operating on structured evaluation results.
 
-### 🤝 Adaptive AI Buyer
+This separation improves:
 
-Conducts multi-turn sales conversations within a defined customer and product scenario.
-
-### 🔎 Evidence-Based Evaluation
-
-Extracts and evaluates representative behavior using cited conversation evidence instead of relying on an unexplained overall score.
-
-### 🎯 Deterministic Readiness Engine
-
-Transforms evaluated competencies and evidence into an explicit readiness decision using deterministic rules.
-
-### 🧠 AI Coaching
-
-Produces targeted coaching based on identified competency weaknesses and previously evaluated evidence.
-
-### 🏋️ Targeted Drills
-
-Creates focused practice opportunities based on identified skill gaps.
-
-### 📈 Adaptive Difficulty
-
-Provides recommendations for adjusting practice difficulty based on evaluation results.
-
-### 📚 Product Knowledge RAG
-
-Supports product-knowledge queries with grounded answers and citation verification.
-
-### 🕸️ Skill Graph & Root-Cause Analysis
-
-Uses a deterministic competency dependency graph to surface correlated weaknesses within a conversation without claiming causal relationships.
+Explainability
+Testability
+Reproducibility
+Auditability
+Control over business decisions
 
 ---
 
-## Architecture
+Key Features
 
-![Architecture](docs/architecture.svg)
+🤝 Adaptive AI Buyer
+
+Simulates multi-turn sales conversations within defined customer, product, and scenario constraints.
+
+The AI buyer adapts its responses based on the representative's conversation behavior while remaining within the configured scenario.
+
+🔎 Evidence-Based Evaluation
+
+Analyzes sales conversations and evaluates representative behavior using specific conversation evidence rather than relying only on an overall AI-generated score.
+
+🎯 Deterministic Readiness Engine
+
+Converts evaluated competencies and evidence into an explicit readiness decision using deterministic business rules.
+
+This keeps the final business decision separate from the LLM.
+
+🧠 AI Coaching
+
+Generates targeted coaching based on identified competency weaknesses and supporting conversation evidence.
+
+🏋️ Targeted Practice Drills
+
+Creates focused practice opportunities around identified skill gaps so representatives can work on specific competencies.
+
+📈 Adaptive Difficulty
+
+Provides recommendations for adjusting practice difficulty based on evaluation results and competency performance.
+
+📚 Product Knowledge RAG
+
+Supports product-knowledge questions using retrieved information and citation verification to improve grounding and reduce unsupported responses.
+
+🕸️ Skill Graph & Root-Cause Analysis
+
+Uses a deterministic competency dependency graph to identify related skill weaknesses within a conversation.
+
+The system intentionally distinguishes correlation and dependency analysis from causal claims.
 
 ---
 
-## Technical Stack
+Example Evaluation Flow
 
-| Layer            | Technology        |
-| ---------------- | ----------------- |
-| Frontend         | React, TypeScript |
-| Backend          | Python, FastAPI   |
-| Database         | PostgreSQL        |
-| AI Orchestration | LangGraph         |
-| LLM              | Anthropic Claude  |
-| Migrations       | Alembic           |
-| Validation       | Pydantic          |
-| Testing          | pytest            |
-| CI               | GitHub Actions    |
+A typical evaluation follows this process:
 
----
+Sales Representative
+        ↓
+AI Buyer Conversation
+        ↓
+Conversation Evidence
+        ↓
+Competency Evaluation
+        ↓
+Structured Competency Results
+        ↓
+Deterministic Rules
+        ↓
+Readiness Decision
+        ↓
+Coaching / Practice Recommendations
 
-## Engineering Highlights
-
-* Separated **LLM-based interpretation** from deterministic evaluation and readiness logic.
-* Designed an explicit multi-stage pipeline from scenario → conversation → evidence → evaluation → readiness.
-* Added dependency checks between pipeline stages instead of silently triggering missing computations.
-* Implemented grounded product-knowledge RAG with citation verification.
-* Added deterministic competency dependency analysis for correlated weaknesses.
-* Built backend and frontend as separate application layers.
-* Added automated testing and CI.
-* Uses database migrations through Alembic.
+This architecture allows the AI components to assist with interpretation while keeping important business decisions controlled by explicit application logic.
 
 ---
 
-## API
+Architecture
 
-The FastAPI backend exposes endpoints for:
+The application separates the frontend, backend, AI orchestration, evaluation logic, and persistence layers.
 
-* Scenarios
-* Conversations
-* Evaluation
-* Readiness
-* Coaching
-* Drills
-* Adaptive difficulty
-* Product-knowledge RAG
-* Skill graph / root-cause analysis
+---
 
-Example:
+Technical Stack
 
-```text
+Layer	Technology
+Frontend	React, TypeScript
+Backend	Python, FastAPI
+Database	PostgreSQL
+AI Orchestration	LangGraph
+LLM	Anthropic Claude
+Validation	Pydantic
+Database Migrations	Alembic
+Testing	pytest
+CI	GitHub Actions
+Deployment	Vercel, Render
+
+---
+
+Engineering Highlights
+
+AI + Deterministic Business Logic
+
+The project deliberately separates probabilistic LLM interpretation from deterministic readiness decisions.
+
+LLM
+ ↓
+Interpretation / Evidence
+ ↓
+Structured Evaluation
+ ↓
+Deterministic Rules
+ ↓
+Final Readiness Decision
+
+This makes the system easier to reason about, test, and evolve.
+
+Multi-Stage Evaluation Pipeline
+
+The backend implements an explicit pipeline from:
+
+Scenario → Conversation → Evidence → Evaluation → Readiness → Coaching
+
+Dependencies between stages are checked explicitly rather than silently assuming that required computations have already been performed.
+
+Grounded RAG
+
+The product-knowledge workflow retrieves relevant information and verifies citations before returning grounded responses.
+
+Competency Dependency Analysis
+
+A deterministic skill graph identifies relationships between competency weaknesses to support more targeted coaching and practice.
+
+Database Migrations
+
+Database schema changes are managed through Alembic migrations rather than relying on manual database modifications.
+
+Automated Testing
+
+The backend includes automated tests covering core application behavior, evaluation logic, API workflows, and deterministic degradation paths for LLM-dependent components.
+
+CI
+
+GitHub Actions is used to automate project validation and testing.
+
+---
+
+API
+
+The FastAPI backend provides REST endpoints for the major application workflows.
+
+Health & Scenarios
 GET  /health
 GET  /scenarios
-
+Conversations
 POST /conversations
 POST /conversations/{id}/turns
 POST /conversations/{id}/evaluate
 POST /conversations/{id}/readiness
-
+Coaching & Practice
 POST /conversations/{id}/coaching
 POST /conversations/{id}/drill
-
+Product Knowledge
 POST /knowledge/documents
 POST /knowledge/query
+Skill Analysis
+GET /conversations/{id}/root-cause-analysis
 
-GET  /conversations/{id}/root-cause-analysis
-```
-
-For complete request/response schemas, see the Pydantic models and backend routers.
+Request and response schemas are defined using Pydantic models in the backend.
 
 ---
 
-## Running Locally
+Running Locally
 
-### Backend
+Backend
 
-```bash
 cd backend
-pip install -r requirements.txt --break-system-packages
+
+pip install -r requirements.txt
+
 cp .env.example .env
+
 alembic upgrade head
+
 uvicorn app.main:app --reload
-```
-
-### Frontend
-
-```bash
+Frontend
 cd frontend
+
 npm install
+
 npm run dev
-```
 
-The frontend development server proxies `/api/*` to the local FastAPI backend.
+The frontend development server proxies /api/* requests to the local FastAPI backend.
 
-### Environment Variables
+Environment Variables
 
-Copy the example environment file and provide your own credentials:
+Create the environment file from the provided example:
 
-```bash
 cp backend/.env.example backend/.env
-```
 
-Never commit real API keys or secrets.
+Add your own local credentials and configuration values.
 
----
-
-## Testing
-
-Run the backend test suite using the repository's configured pytest commands.
-
-**259 backend tests passing** — if this is still the current verified test count.
-
-The test environment also supports deterministic degradation paths for LLM-dependent components so the core system can be tested without requiring live API calls.
+Never commit API keys, passwords, database credentials, or other secrets to the repository.
 
 ---
 
-## Current Status
+Testing
 
-**Phase 14 of 26 — Skill Graph & Deterministic Root-Cause Analysis**
+The project includes an automated backend test suite using pytest.
 
-Completed functionality includes:
+LLM-dependent components also support deterministic degradation paths so that important parts of the application can be tested without requiring live external API calls.
 
-* Product strategy and architecture
-* Backend/frontend foundation
-* Database migrations
-* Scenario management
-* Adaptive AI buyer
-* Multi-turn conversations
-* Evidence extraction
-* Deterministic evaluation
-* Deterministic readiness
-* AI coaching
-* Targeted drills
-* Adaptive difficulty recommendations
-* Product-knowledge RAG
-* Competency dependency graph
+Run the repository's configured test commands to validate the current implementation.
 
 ---
 
-## Current Scope
+Current Product Scope
 
-The current implementation intentionally has several MVP boundaries:
+The current version focuses on the core sales-readiness evaluation pipeline:
 
-* The skill graph currently operates within a conversation.
-* Longitudinal cross-conversation "Sales DNA" functionality is deferred.
-* Coaching, drills, adaptive difficulty, and RAG are currently API-first and do not yet have complete frontend workflows.
-* The application is currently single-tenant.
-* The current MVP uses a seeded scenario.
-* Real authentication is not yet implemented.
+Scenario management
+Adaptive AI buyer
+Multi-turn conversations
+Evidence extraction
+Competency evaluation
+Deterministic readiness evaluation
+AI coaching
+Targeted practice drills
+Adaptive difficulty recommendations
+Product-knowledge RAG
+Competency dependency analysis
 
-These are documented product-scope decisions rather than hidden limitations.
+The MVP intentionally focuses on the core evaluation workflow rather than attempting to implement every possible enterprise sales-readiness feature.
+
+---
+
+Future Direction
+
+Potential future extensions include:
+
+Longitudinal representative performance tracking
+Cross-conversation "Sales DNA" analysis
+Expanded scenario libraries
+Production authentication and authorization
+Multi-tenant architecture
+Complete frontend workflows for coaching, drills, and RAG
+Advanced analytics and reporting
+
+These are planned product extensions rather than requirements for the current core evaluation pipeline.
 
 ---
 
@@ -258,8 +329,4 @@ For deeper technical details:
 https://ai-sales-readiness-intelligence.vercel.app/
 
 ---
-
-## License
-
-Add the repository's actual license here if one is present.
 
