@@ -190,9 +190,6 @@ Never commit real API keys or secrets.
 ## Testing
 
 Run the backend test suite using the repository's configured pytest commands.
-
-**259 backend tests passing** — if this is still the current verified test count.
-
 The test environment also supports deterministic degradation paths for LLM-dependent components so the core system can be tested without requiring live API calls.
 
 ---
